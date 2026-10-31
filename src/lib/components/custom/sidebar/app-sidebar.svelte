@@ -27,6 +27,7 @@
 	import AppLogo from '../app-logo.svelte';
 	import { Badge } from '../../ui/badge';
 	import type { AuthSession } from '#lib/server/auth.ts';
+	import { AnimatedThemeToggler } from '../magic/animated-theme-toggler';
 
 	export type AppSidebarRole = 'admin' | 'staff' | 'customer';
 
@@ -137,7 +138,7 @@
 	}
 </script>
 
-<Sidebar.Root collapsible="icon" {...restProps}>
+<Sidebar.Root variant="floating" collapsible="icon" {...restProps}>
 	<Sidebar.Header>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
@@ -180,7 +181,7 @@
 
 	<Sidebar.Footer>
 		<Sidebar.Menu>
-			<Sidebar.MenuItem>
+			<Sidebar.MenuItem class="flex items-center gap-2">
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
@@ -228,6 +229,9 @@
 							</DropdownMenu.Item>
 						</DropdownMenu.Group>
 					</DropdownMenu.Content>
+					{#if sidebar.open}
+						<AnimatedThemeToggler />
+					{/if}
 				</DropdownMenu.Root>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
