@@ -13,6 +13,6 @@
 </svelte:head>
 
 <ModeWatcher />
-<Toaster />
+<Toaster closeButton richColors />
 
 {@render children()}
