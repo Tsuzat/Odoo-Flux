@@ -13,14 +13,6 @@ export const variables = defineEnvVars({
 		description:
 			'Secret used to sign tokens. For production use 32 characters generated with high entropy. See [Better Auth installation](https://www.better-auth.com/docs/installation).'
 	},
-	GITHUB_CLIENT_ID: {
-		description:
-			'GitHub OAuth client ID. See [Better Auth GitHub provider](https://www.better-auth.com/docs/authentication/github).'
-	},
-	GITHUB_CLIENT_SECRET: {
-		description:
-			'GitHub OAuth client secret. See [Better Auth GitHub provider](https://www.better-auth.com/docs/authentication/github).'
-	},
 	ZEPTO_MAIL_URL: {
 		description: 'Zoho Mail API URL.'
 	},

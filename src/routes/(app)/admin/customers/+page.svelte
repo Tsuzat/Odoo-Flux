@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getCustomers } from '../data.remote.ts';
 	import UserManage from '../user-manage.svelte';
+	import type { PageProps } from './$types';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -11,6 +12,7 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	const customers = getCustomers();
+	const { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -91,7 +93,7 @@
 									{/if}
 								</Table.Cell>
 								<Table.Cell class="text-right">
-									<UserManage user={row.user} />
+									<UserManage user={row.user} isSelf={row.user.id === data.user.id} />
 								</Table.Cell>
 							</Table.Row>
 						{/each}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createStaffCommand, getStaff } from '../data.remote.ts';
 	import UserManage from '../user-manage.svelte';
+	import type { PageProps } from './$types';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
@@ -19,6 +20,7 @@
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	const staff = getStaff();
+	const { data }: PageProps = $props();
 
 	let sheetOpen = $state(false);
 	let form = $state({ name: '', email: '', password: '', role: 'staff' as 'admin' | 'staff' });
@@ -112,7 +114,11 @@
 								</Table.Cell>
 								<Table.Cell class="text-muted-foreground">{formatDate(u.createdAt)}</Table.Cell>
 								<Table.Cell class="text-right">
-									<UserManage user={u} roles={['admin', 'staff', 'customer']} />
+									<UserManage
+										user={u}
+										roles={['admin', 'staff', 'customer']}
+										isSelf={u.id === data.user.id}
+									/>
 								</Table.Cell>
 							</Table.Row>
 						{/each}
