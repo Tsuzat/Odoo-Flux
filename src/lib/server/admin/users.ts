@@ -88,6 +88,13 @@ export async function createStaffUser(
 		},
 		headers
 	});
+	// Admin-created logins are trusted — mark the email verified so the
+	// user can sign in straight away (no verification email round-trip,
+	// which `requireEmailVerification` would otherwise demand).
+	const userId = (result as { user?: { id?: string } } | null)?.user?.id;
+	if (userId) {
+		await db.update(user).set({ emailVerified: true }).where(eq(user.id, userId));
+	}
 	return result;
 }
 
