@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { command, getRequestEvent, query } from '$app/server';
 import { z } from 'zod';
 import { getStaffOverview } from '#lib/server/staff.ts';
+import { generateNextInvoice } from '#lib/server/admin/billing.ts';
 import { listCustomers } from '#lib/server/admin/users.ts';
 import { listPlans, listProducts, listTaxes } from '#lib/server/admin/catalog.ts';
 import {
@@ -164,6 +165,20 @@ export const removeSubscriptionLineCommand = command(
 		}
 	}
 );
+
+/** Generate the invoice for a subscription's next unbilled period. */
+export const generateInvoiceCommand = command(id, async (subscriptionId) => {
+	requireStaff();
+	try {
+		const result = await generateNextInvoice(subscriptionId);
+		void getInvoices().refresh();
+		void getSubscriptions().refresh();
+		void getSubscription(subscriptionId).refresh();
+		return result;
+	} catch (e) {
+		error(400, e instanceof Error ? e.message : 'Could not generate the invoice.');
+	}
+});
 
 /* Reference data for forms */
 export const getCustomers = query(async () => {

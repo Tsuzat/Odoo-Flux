@@ -2,6 +2,7 @@
 	import {
 		addSubscriptionLineCommand,
 		createSubscriptionCommand,
+		generateInvoiceCommand,
 		getCustomers,
 		getPlans,
 		getProducts,
@@ -34,6 +35,7 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import EyeIcon from '@lucide/svelte/icons/eye';
+	import ReceiptTextIcon from '@lucide/svelte/icons/receipt-text';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
@@ -207,6 +209,18 @@
 		}
 	}
 
+	async function generateInvoice(id: string) {
+		acting = 'generate';
+		try {
+			const result = await generateInvoiceCommand(id);
+			toast.success(`Invoice ${result.number} generated.`);
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not generate the invoice.');
+		} finally {
+			acting = null;
+		}
+	}
+
 	async function transition(id: string, action: Action) {
 		acting = action;
 		try {
@@ -333,6 +347,12 @@
 													<EyeIcon />
 													View
 												</DropdownMenu.Item>
+												{#if s.status === 'active'}
+													<DropdownMenu.Item onclick={() => generateInvoice(s.id)}>
+														<ReceiptTextIcon />
+														Generate invoice
+													</DropdownMenu.Item>
+												{/if}
 											</DropdownMenu.Group>
 										</DropdownMenu.Content>
 									</DropdownMenu.Root>
@@ -850,6 +870,17 @@
 								onclick={() => transition(s.id, 'resume')}
 							>
 								Resume
+							</Button>
+						{/if}
+						{#if s.status === 'active'}
+							<Button
+								size="sm"
+								variant="outline"
+								disabled={acting !== null}
+								onclick={() => generateInvoice(s.id)}
+							>
+								<ReceiptTextIcon data-icon="inline-start" />
+								Generate invoice
 							</Button>
 						{/if}
 						{#if s.status === 'active' && s.plan.renewable}
