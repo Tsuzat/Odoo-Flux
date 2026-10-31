@@ -207,6 +207,54 @@ export async function generateInvoiceForSubscription(
 	return { invoiceId: created.id, number: created.number };
 }
 
+/**
+ * Generate the invoice for a subscription's first not-yet-invoiced
+ * period (used by the manual "Generate invoice" action). Periods that
+ * already have an invoice — including ones billed ahead, e.g. after
+ * adding a product line — are skipped, and `nextBillingDate` advances
+ * past the newly invoiced period. This is what makes a newly added
+ * add-on land on the *next* invoice instead of failing as a duplicate.
+ */
+export async function generateNextInvoice(
+	subscriptionId: string
+): Promise<{ invoiceId: string; number: string }> {
+	const sub = await db.query.subscription.findFirst({
+		where: eq(subscription.id, subscriptionId),
+		with: { plan: true, lines: true }
+	});
+	if (!sub) throw new Error('Subscription not found.');
+	if (sub.status !== 'active') {
+		throw new Error('Only active subscriptions can be invoiced.');
+	}
+	if (sub.lines.length === 0) {
+		throw new Error('This subscription has no product lines to invoice.');
+	}
+
+	let cursor = sub.nextBillingDate ?? sub.startDate;
+	for (let i = 0; i < MAX_PERIODS_PER_RUN; i++) {
+		const periodEnd = addPeriod(cursor, sub.plan.billingPeriod);
+		const existing = await db.query.invoice.findFirst({
+			where: and(
+				eq(invoice.subscriptionId, sub.id),
+				eq(invoice.periodStart, cursor),
+				eq(invoice.periodEnd, periodEnd)
+			)
+		});
+		if (!existing) {
+			const result = await generateInvoiceForSubscription(subscriptionId, cursor);
+			if (!result) throw new Error('This subscription has no product lines to invoice.');
+			await db
+				.update(subscription)
+				.set({ nextBillingDate: periodEnd })
+				.where(eq(subscription.id, sub.id));
+			await deleteCached(DASHBOARD_CACHE_KEY);
+			return result;
+		}
+		cursor = periodEnd;
+	}
+	throw new Error('All upcoming periods are already invoiced — nothing new to generate.');
+}
+
 export interface DueSubscription {
 	id: string;
 	number: string;

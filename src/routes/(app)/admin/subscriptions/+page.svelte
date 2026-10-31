@@ -28,10 +28,12 @@
 	import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
 	import { SidebarTrigger } from '#lib/components/ui/sidebar/index.ts';
 	import { toast } from 'svelte-sonner';
+	import { slide } from 'svelte/transition';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
 	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -146,10 +148,17 @@
 
 	/* ── detail / actions ── */
 	let selectedId = $state<string | null>(null);
+
+	// Collapse the add-line form whenever another subscription is opened.
+	$effect(() => {
+		void selectedId;
+		addFormOpen = false;
+	});
 	const detail = $derived(selectedId ? getSubscription(selectedId) : null);
 	let acting = $state<string | null>(null);
 
 	let addonForm = $state({ productId: '', variantId: '', quantity: 1, taxId: '' });
+	let addFormOpen = $state(false);
 	let addingLine = $state(false);
 
 	async function addLine(subscriptionId: string) {
@@ -686,107 +695,126 @@
 					</Table.Root>
 
 					{#if s.status !== 'closed'}
-						<form
-							class="flex flex-col gap-3 rounded-lg border p-3"
-							onsubmit={(e) => {
-								e.preventDefault();
-								addLine(s.id);
-							}}
-						>
-							<p class="text-sm font-medium">Add product / add-on</p>
-							<div class="grid grid-cols-2 gap-3">
-								<Field.Field>
-									<Field.FieldLabel for="add-product">Product</Field.FieldLabel>
-									<Select.Root
-										type="single"
-										value={addonForm.productId}
-										onValueChange={(v) => {
-											addonForm.productId = v;
-											addonForm.variantId = '';
+						<div class="flex flex-col rounded-lg border">
+							<button
+								type="button"
+								class="flex w-full items-center justify-between px-3 py-2.5 text-left"
+								aria-expanded={addFormOpen}
+								onclick={() => (addFormOpen = !addFormOpen)}
+							>
+								<span class="text-sm font-medium">Add product / add-on</span>
+								<ChevronDownIcon
+									class="size-4 shrink-0 text-muted-foreground transition-transform duration-300 {addFormOpen
+										? 'rotate-180'
+										: ''}"
+									aria-hidden="true"
+								/>
+							</button>
+							{#if addFormOpen}
+								<div transition:slide={{ duration: 250 }}>
+									<form
+										class="flex flex-col gap-3 px-3 pb-3"
+										onsubmit={(e) => {
+											e.preventDefault();
+											addLine(s.id);
 										}}
 									>
-										<Select.Trigger id="add-product" class="w-full">
-											{productById(addonForm.productId)?.name ?? 'Select product'}
-										</Select.Trigger>
-										<Select.Content>
-											<Select.Group>
-												{#each products.current ?? [] as p (p.id)}
-													<Select.Item value={p.id} label={p.name} />
-												{/each}
-											</Select.Group>
-										</Select.Content>
-									</Select.Root>
-								</Field.Field>
-								<Field.Field>
-									<Field.FieldLabel for="add-variant">Variant</Field.FieldLabel>
-									<Select.Root
-										type="single"
-										value={addonForm.variantId}
-										onValueChange={(v) => (addonForm.variantId = v)}
-									>
-										<Select.Trigger id="add-variant" class="w-full">
-											{productById(addonForm.productId)?.variants.find(
-												(v) => v.id === addonForm.variantId
-											)
-												? `${productById(addonForm.productId)?.variants.find((v) => v.id === addonForm.variantId)?.attribute}: ${productById(addonForm.productId)?.variants.find((v) => v.id === addonForm.variantId)?.value}`
-												: 'No variant'}
-										</Select.Trigger>
-										<Select.Content>
-											<Select.Group>
-												{#each productById(addonForm.productId)?.variants ?? [] as v (v.id)}
-													<Select.Item
-														value={v.id}
-														label={`${v.attribute}: ${v.value} (+${formatCurrency(v.extraPrice)})`}
-													/>
-												{/each}
-											</Select.Group>
-										</Select.Content>
-									</Select.Root>
-								</Field.Field>
-							</div>
-							<div class="flex items-end gap-3">
-								<Field.Field class="max-w-28">
-									<Field.FieldLabel for="add-qty">Qty</Field.FieldLabel>
-									<Input
-										id="add-qty"
-										type="number"
-										min="1"
-										step="1"
-										bind:value={addonForm.quantity}
-										required
-									/>
-								</Field.Field>
-								<Field.Field class="flex-1">
-									<Field.FieldLabel for="add-tax">Tax</Field.FieldLabel>
-									<Select.Root
-										type="single"
-										value={addonForm.taxId}
-										onValueChange={(v) => (addonForm.taxId = v)}
-									>
-										<Select.Trigger id="add-tax" class="w-full">
-											{taxes.current?.find((t) => t.id === addonForm.taxId)?.name ?? 'No tax'}
-										</Select.Trigger>
-										<Select.Content>
-											<Select.Group>
-												{#each taxes.current ?? [] as t (t.id)}
-													<Select.Item
-														value={t.id}
-														label={`${t.name} (${Number(t.ratePercent)}%)`}
-													/>
-												{/each}
-											</Select.Group>
-										</Select.Content>
-									</Select.Root>
-								</Field.Field>
-								<Button type="submit" size="sm" disabled={addingLine}>
-									{#if addingLine}<BarSpinner role="status" aria-label="Adding line" />{/if}
-									Add line
-								</Button>
-							</div>
-							<p class="text-xs text-muted-foreground">
-								Changes apply from the next invoice — invoices already generated don't change.
-							</p>
-						</form>
+										<div class="grid grid-cols-2 gap-3">
+											<Field.Field>
+												<Field.FieldLabel for="add-product">Product</Field.FieldLabel>
+												<Select.Root
+													type="single"
+													value={addonForm.productId}
+													onValueChange={(v) => {
+														addonForm.productId = v;
+														addonForm.variantId = '';
+													}}
+												>
+													<Select.Trigger id="add-product" class="w-full">
+														{productById(addonForm.productId)?.name ?? 'Select product'}
+													</Select.Trigger>
+													<Select.Content>
+														<Select.Group>
+															{#each products.current ?? [] as p (p.id)}
+																<Select.Item value={p.id} label={p.name} />
+															{/each}
+														</Select.Group>
+													</Select.Content>
+												</Select.Root>
+											</Field.Field>
+											<Field.Field>
+												<Field.FieldLabel for="add-variant">Variant</Field.FieldLabel>
+												<Select.Root
+													type="single"
+													value={addonForm.variantId}
+													onValueChange={(v) => (addonForm.variantId = v)}
+												>
+													<Select.Trigger id="add-variant" class="w-full">
+														{productById(addonForm.productId)?.variants.find(
+															(v) => v.id === addonForm.variantId
+														)
+															? `${productById(addonForm.productId)?.variants.find((v) => v.id === addonForm.variantId)?.attribute}: ${productById(addonForm.productId)?.variants.find((v) => v.id === addonForm.variantId)?.value}`
+															: 'No variant'}
+													</Select.Trigger>
+													<Select.Content>
+														<Select.Group>
+															{#each productById(addonForm.productId)?.variants ?? [] as v (v.id)}
+																<Select.Item
+																	value={v.id}
+																	label={`${v.attribute}: ${v.value} (+${formatCurrency(v.extraPrice)})`}
+																/>
+															{/each}
+														</Select.Group>
+													</Select.Content>
+												</Select.Root>
+											</Field.Field>
+										</div>
+										<div class="flex items-end gap-3">
+											<Field.Field class="max-w-28">
+												<Field.FieldLabel for="add-qty">Qty</Field.FieldLabel>
+												<Input
+													id="add-qty"
+													type="number"
+													min="1"
+													step="1"
+													bind:value={addonForm.quantity}
+													required
+												/>
+											</Field.Field>
+											<Field.Field class="flex-1">
+												<Field.FieldLabel for="add-tax">Tax</Field.FieldLabel>
+												<Select.Root
+													type="single"
+													value={addonForm.taxId}
+													onValueChange={(v) => (addonForm.taxId = v)}
+												>
+													<Select.Trigger id="add-tax" class="w-full">
+														{taxes.current?.find((t) => t.id === addonForm.taxId)?.name ?? 'No tax'}
+													</Select.Trigger>
+													<Select.Content>
+														<Select.Group>
+															{#each taxes.current ?? [] as t (t.id)}
+																<Select.Item
+																	value={t.id}
+																	label={`${t.name} (${Number(t.ratePercent)}%)`}
+																/>
+															{/each}
+														</Select.Group>
+													</Select.Content>
+												</Select.Root>
+											</Field.Field>
+											<Button type="submit" size="sm" disabled={addingLine}>
+												{#if addingLine}<BarSpinner role="status" aria-label="Adding line" />{/if}
+												Add line
+											</Button>
+										</div>
+										<p class="text-xs text-muted-foreground">
+											Changes apply from the next invoice — invoices already generated don't change.
+										</p>
+									</form>
+								</div>
+							{/if}
+						</div>
 					{/if}
 				</div>
 

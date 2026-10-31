@@ -47,11 +47,7 @@ import {
 	updateSubscriptionLineQuantity,
 	type SubscriptionAction
 } from '#lib/server/admin/operations.ts';
-import {
-	generateInvoiceForSubscription,
-	getDueSubscriptions,
-	runBilling
-} from '#lib/server/admin/billing.ts';
+import { generateNextInvoice, getDueSubscriptions, runBilling } from '#lib/server/admin/billing.ts';
 import {
 	APP_ROLES,
 	banUser,
@@ -622,21 +618,17 @@ export const sendInvoiceCommand = command(id, async (id) => {
 	}
 });
 
-/** Generate one invoice for a subscription's current billing period. */
+/** Generate the invoice for a subscription's next unbilled period. */
 export const generateInvoiceCommand = command(id, async (subscriptionId) => {
 	requireAdmin();
 	try {
-		const sub = await getSubscriptionDetail(subscriptionId);
-		if (!sub) error(404, 'Subscription not found.');
-		const periodStart = sub.nextBillingDate ?? sub.startDate;
-		const result = await generateInvoiceForSubscription(subscriptionId, periodStart);
-		if (!result)
-			error(400, 'An invoice already exists for this period, or the subscription has no lines.');
+		const result = await generateNextInvoice(subscriptionId);
 		void getInvoices().refresh();
+		void getSubscriptions().refresh();
+		void getSubscription(subscriptionId).refresh();
 		void getDashboard().refresh();
 		return result;
 	} catch (e) {
-		if (e instanceof Error && 'status' in e) throw e;
 		error(400, e instanceof Error ? e.message : 'Could not generate the invoice.');
 	}
 });
