@@ -25,7 +25,6 @@
 	import Logout from '@lucide/svelte/icons/log-out';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { goto } from '$app/navigation';
 	import { cn } from '#lib/utils.ts';
 	import {
 		Accordion,
@@ -319,9 +318,13 @@
 					</DropdownMenu.Group>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Group>
-						<DropdownMenu.Item variant="destructive" onclick={() => goto(resolve('/signout'))}>
-							<Logout />
-							Sign Out
+						<DropdownMenu.Item variant="destructive" class="nodefault">
+							{#snippet child({ props })}
+								<a href={resolve('/signout')} {...props}>
+									<Logout />
+									Sign Out
+								</a>
+							{/snippet}
 						</DropdownMenu.Item>
 					</DropdownMenu.Group>
 				</DropdownMenu.Content>

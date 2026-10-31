@@ -6,3 +6,5 @@ export * from './magic/animated-beam';
 export { default as UserAvatar } from './user-avatar.svelte';
 export * from './landing';
 export { default as BarSpinner } from './bar-spinner.svelte';
+export { default as AppSidebar } from './sidebar/app-sidebar.svelte';
+export type { AppSidebarRole } from './sidebar/app-sidebar.svelte';

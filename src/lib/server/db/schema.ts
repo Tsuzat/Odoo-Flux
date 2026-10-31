@@ -284,15 +284,8 @@ export const payment = pgTable(
 	(t) => [index('pay_invoice_idx').on(t.invoiceId), index('pay_date_idx').on(t.paidOn)]
 );
 
-/* ───────── relations ─────────
- * ORM-level only (used by `db.query.*` relational queries in
- * `db/index.ts`); they do not change the database schema, so no
- * migration is needed for this section.
- *
- * `userRelations` here supersedes the accounts-only one exported
- * from `auth.schema.ts` (the local export wins over the `export *`
- * below), adding the billing-side relations of a user.
- */
+// ───────── relations ─────────
+
 export const userRelations = relations(user, ({ one, many }) => ({
 	accounts: many(account),
 	customer: one(customer, { fields: [user.id], references: [customer.userId] }),
@@ -447,10 +440,10 @@ export const UNPAID_INVOICE_STATUSES = [
 	'confirmed'
 ] as const satisfies readonly InvoiceStatus[];
 
-/* ───────── row / insert types ───────── */
-export type User = typeof user.$inferSelect;
-export type NewUser = typeof user.$inferInsert;
-
+/* ───────── row / insert types ─────────
+ * `User` / `NewUser` are exported from `auth.schema.ts` and
+ * re-exported through the `export *` at the bottom of this file.
+ */
 export type Customer = typeof customer.$inferSelect;
 export type NewCustomer = typeof customer.$inferInsert;
 

@@ -13,6 +13,7 @@ import {
 	getExistingUserSignupTemplate,
 	getSignupVerificationTemplate
 } from './email/templates';
+import { customer } from './db/schema.ts';
 
 /**
  * Fire-and-forget delivery for auth emails. Not awaiting keeps the
@@ -125,8 +126,20 @@ export const auth = betterAuth({
 			);
 		}
 	},
+	databaseHooks: {
+		user: {
+			create: {
+				after: async (u) => {
+					if (u.role && u.role !== 'customer') return; // skip staff/admin
+					await db.insert(customer).values({ userId: u.id, name: u.name }).onConflictDoNothing();
+				}
+			}
+		}
+	},
 	plugins: [
 		admin({ defaultRole: 'customer', adminRoles: ['admin'] }),
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]
 });
+
+export type AuthSession = typeof auth.$Infer.Session;
