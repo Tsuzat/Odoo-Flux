@@ -1,29 +1,29 @@
 {
-  "version": 1,
-  "skills": {
-    "better-auth-best-practices": {
-      "source": "better-auth/skills",
-      "sourceType": "github",
-      "skillPath": "better-auth/best-practices/SKILL.md",
-      "computedHash": "0c30be0e118c2b7a0c4c57bd9e63bf110c7e420a79ec6ce7997153f3b1e066ee"
-    },
-    "coss": {
-      "source": "cossui-svelte/cossui-svelte",
-      "sourceType": "github",
-      "skillPath": "static/skills/coss/SKILL.md",
-      "computedHash": "c3215caa87b641262e346c60cb6118c95279393be88b882b1eaac580f928ccac"
-    },
-    "coss-particles": {
-      "source": "cossui-svelte/cossui-svelte",
-      "sourceType": "github",
-      "skillPath": "static/skills/coss-particles/SKILL.md",
-      "computedHash": "8f720fd00c2977da9697b3b17360a311a67be65d3a6645aa60072aebeb2136c0"
-    },
-    "shadcn-svelte": {
-      "source": "huntabyte/shadcn-svelte",
-      "sourceType": "github",
-      "skillPath": "skills/shadcn-svelte/SKILL.md",
-      "computedHash": "32bb4ca39c2a92df85266148aeb02cbaa3b8d6ca893ae8ba27540173cffe6240"
-    }
-  }
+	"version": 1,
+	"skills": {
+		"better-auth-best-practices": {
+			"source": "better-auth/skills",
+			"sourceType": "github",
+			"skillPath": "better-auth/best-practices/SKILL.md",
+			"computedHash": "0c30be0e118c2b7a0c4c57bd9e63bf110c7e420a79ec6ce7997153f3b1e066ee"
+		},
+		"coss": {
+			"source": "cossui-svelte/cossui-svelte",
+			"sourceType": "github",
+			"skillPath": "static/skills/coss/SKILL.md",
+			"computedHash": "c3215caa87b641262e346c60cb6118c95279393be88b882b1eaac580f928ccac"
+		},
+		"coss-particles": {
+			"source": "cossui-svelte/cossui-svelte",
+			"sourceType": "github",
+			"skillPath": "static/skills/coss-particles/SKILL.md",
+			"computedHash": "8f720fd00c2977da9697b3b17360a311a67be65d3a6645aa60072aebeb2136c0"
+		},
+		"shadcn-svelte": {
+			"source": "huntabyte/shadcn-svelte",
+			"sourceType": "github",
+			"skillPath": "skills/shadcn-svelte/SKILL.md",
+			"computedHash": "32bb4ca39c2a92df85266148aeb02cbaa3b8d6ca893ae8ba27540173cffe6240"
+		}
+	}
 }

@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import {
 		AppLogo,
+		MultiStream,
 		Particles,
 		Spotlight,
 		UserAvatar,
@@ -14,13 +15,9 @@
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import CalendarDays from '@lucide/svelte/icons/calendar-days';
-	import ChartColumn from '@lucide/svelte/icons/chart-column';
-	import Check from '@lucide/svelte/icons/check';
 	import CreditCard from '@lucide/svelte/icons/credit-card';
-	import Headphones from '@lucide/svelte/icons/headphones';
 	import Layers from '@lucide/svelte/icons/layers';
 	import Landmark from '@lucide/svelte/icons/landmark';
-	import ScrollText from '@lucide/svelte/icons/scroll-text';
 	import Store from '@lucide/svelte/icons/store';
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import ToggleRight from '@lucide/svelte/icons/toggle-right';
@@ -44,24 +41,13 @@
 	let activeSection = $state('');
 	let y = $state(0);
 	let isScrolled = $derived(y > 20);
-	let billingCycle = $state<'monthly' | 'yearly'>('monthly');
-	let enabledAddOns = $state<Record<string, boolean>>({
-		analytics: true,
-		support: false,
-		storage: true,
-		api: false,
-		domain: false,
-		audit: false
-	});
 
 	const canonicalUrl = $derived(`${page.url.origin}/`);
-	const enabledCount = $derived(Object.values(enabledAddOns).filter(Boolean).length);
 	const year = new Date().getFullYear();
 
 	const tabItems = [
 		{ url: '#features', title: 'Features' },
-		{ url: '#addons', title: 'Add-ons' },
-		{ url: '#pricing', title: 'Pricing' },
+		{ url: '#products', title: 'Products' },
 		{ url: '#faqs', title: 'FAQs' }
 	];
 
@@ -112,101 +98,6 @@
 				'Buy on a yearly contract with custom variants, governance and dedicated support.',
 			icon: Landmark,
 			plan: 'Yearly contracts'
-		}
-	];
-
-	const addOns = [
-		{
-			id: 'analytics',
-			name: 'Advanced analytics',
-			description: 'Dashboards, exports and forecasts across every product.',
-			icon: ChartColumn
-		},
-		{
-			id: 'support',
-			name: 'Priority support',
-			description: 'A faster response from a team that knows your setup.',
-			icon: Headphones
-		},
-		{
-			id: 'storage',
-			name: 'Extra storage',
-			description: 'More room for documents, attachments and history.',
-			icon: Layers
-		},
-		{
-			id: 'api',
-			name: 'API access',
-			description: 'Connect Brightloop to the tools you already use.',
-			icon: ToggleRight
-		},
-		{
-			id: 'domain',
-			name: 'Custom domain',
-			description: 'Run your customer portal on your own domain.',
-			icon: Landmark
-		},
-		{
-			id: 'audit',
-			name: 'Audit log',
-			description: 'See who changed what, and when, across your workspace.',
-			icon: ScrollText
-		}
-	];
-
-	interface Plan {
-		name: string;
-		description: string;
-		monthly: number | null;
-		yearly: number | null;
-		features: string[];
-		cta: string;
-		popular?: boolean;
-	}
-
-	const plans: Plan[] = [
-		{
-			name: 'Starter',
-			description: 'For small shops that want the essentials without a long contract.',
-			monthly: 19,
-			yearly: 15,
-			features: [
-				'Core subscription products',
-				'Up to 3 users',
-				'Monthly or yearly billing',
-				'Self-serve add-ons',
-				'Email support'
-			],
-			cta: 'Start with Starter'
-		},
-		{
-			name: 'Growth',
-			description: 'For growing teams that need flexibility and room to add more.',
-			monthly: 49,
-			yearly: 39,
-			features: [
-				'Everything in Starter',
-				'Up to 25 users',
-				'Product variants included',
-				'3 add-ons of your choice',
-				'Priority support'
-			],
-			cta: 'Choose Growth',
-			popular: true
-		},
-		{
-			name: 'Enterprise',
-			description: 'For large companies that buy on yearly contracts.',
-			monthly: null,
-			yearly: null,
-			features: [
-				'Unlimited users',
-				'Custom products and variants',
-				'Any add-on, any time',
-				'SSO, audit logs and SLA',
-				'Dedicated account manager'
-			],
-			cta: 'Talk to sales'
 		}
 	];
 
@@ -272,21 +163,6 @@
 				'Email brightloop@tsuzat.com or use the contact link below. Enterprise customers also get a dedicated account manager.'
 		}
 	];
-
-	function planPrice(plan: Plan): string {
-		if (plan.monthly === null) return 'Custom';
-		const amount = billingCycle === 'monthly' ? plan.monthly : (plan.yearly ?? plan.monthly);
-		return `$${amount}`;
-	}
-
-	function planBillingNote(plan: Plan): string {
-		if (plan.monthly === null) return 'Billed yearly';
-		return billingCycle === 'monthly' ? 'Billed monthly' : 'Billed yearly — save 20%';
-	}
-
-	function toggleAddOn(id: string) {
-		enabledAddOns[id] = !enabledAddOns[id];
-	}
 
 	onMount(() => {
 		setTimeout(() => {
@@ -367,7 +243,7 @@
 		'sticky z-50 mx-auto flex items-center justify-between gap-8 rounded-xl px-2 backdrop-blur-sm transition-all duration-500',
 		isScrolled
 			? 'max-w-4xl border bg-background/60 p-2 shadow-lg sm:top-2'
-			: 'top-0 max-w-full bg-background/20 px-2 py-2 sm:px-12'
+			: 'top-0 max-w-6xl bg-background/20 px-2 py-2 sm:px-12'
 	)}
 >
 	<AppLogo showLogo={!isScrolled} />
@@ -465,8 +341,8 @@
 	>
 		<a
 			class="group nodefault relative z-10 mx-auto flex w-fit items-center gap-4 rounded-2xl border bg-primary/30 p-1 pl-4 shadow-md shadow-zinc-950/5 transition-colors duration-300 hover:bg-background dark:border-t-white/5 dark:shadow-zinc-950 dark:hover:border-t-border"
-			href="#pricing"
-			title="Open Pricing"
+			href="#products"
+			title="Explore products"
 		>
 			<span class="text-sm text-foreground">✨ Monthly or yearly — switch anytime ✨</span>
 			<span class="block h-4 w-0.5 border-l bg-muted-foreground dark:border-background"></span>
@@ -491,7 +367,7 @@
 		</p>
 		<div class="flex items-center justify-center gap-4">
 			<Button class="nodefault" href={resolve('/signup')}>Get started</Button>
-			<Button class="nodefault" variant="outline" href="#pricing">See plans</Button>
+			<Button class="nodefault" variant="outline" href="#products">Explore products</Button>
 		</div>
 
 		<div
@@ -532,7 +408,7 @@
 				</div>
 				<div class="rounded-xl border bg-muted/40 p-3">
 					<p class="text-xs text-muted-foreground">Add-ons</p>
-					<p class="mt-1 text-lg font-semibold">{enabledCount} enabled</p>
+					<p class="mt-1 text-lg font-semibold">2 active</p>
 					<p class="text-xs text-muted-foreground">Switch on or off anytime</p>
 				</div>
 			</div>
@@ -553,9 +429,7 @@
 							<ToggleRight class="size-4 text-primary" aria-hidden="true" />
 							<span class="text-sm font-medium">Add-ons</span>
 						</div>
-						<span class="text-xs text-muted-foreground"
-							>{enabledCount} of {addOns.length} enabled</span
-						>
+						<span class="text-xs text-muted-foreground">2 active</span>
 					</div>
 				</div>
 			</div>
@@ -563,7 +437,7 @@
 			<div
 				class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-dashed p-3 text-xs text-muted-foreground"
 			>
-				<span>3 products · {enabledCount} add-ons · 1 variant</span>
+				<span>3 products · 2 add-ons · 1 variant</span>
 				<span>Next invoice · Jan 1</span>
 			</div>
 		</div>
@@ -596,6 +470,21 @@
 		</dl>
 	</section>
 
+	<section id="products">
+		<div class="flex flex-col items-center gap-4">
+			<h2 class="text-4xl font-bold">Every product, connected</h2>
+			<span class="text-lg text-balance text-muted-foreground"
+				>Billing, CRM, inventory, analytics and support connect to one Brightloop workspace. Add-ons
+				switch on when you need them — and every product comes in the variant that fits your
+				business.
+			</span>
+		</div>
+		<div class="relative mx-auto mt-12 w-2xl max-w-full rounded-2xl">
+			<BorderBeam />
+			<MultiStream class="mx-auto rounded-2xl" />
+		</div>
+	</section>
+
 	<section id="solutions">
 		<div class="flex flex-col items-center gap-4">
 			<h2 class="text-4xl font-bold">From the corner shop to the enterprise</h2>
@@ -618,145 +507,6 @@
 				</div>
 			{/each}
 		</div>
-	</section>
-
-	<section id="addons">
-		<div class="flex flex-col items-center gap-4">
-			<h2 class="text-4xl font-bold">Add-ons that move with your business</h2>
-			<span class="text-lg text-balance text-muted-foreground"
-				>Switch extras on for the busy season and off when things slow down. Try the toggles below.
-			</span>
-		</div>
-		<div class="mx-auto mt-12 grid max-w-3xl gap-3 text-left">
-			{#each addOns as addOn, idx (idx)}
-				{@const Icon = addOn.icon}
-				<div
-					class="flex items-center justify-between gap-4 rounded-xl border bg-background/70 p-4 shadow-sm transition-colors {enabledAddOns[
-						addOn.id
-					]
-						? 'border-primary/40'
-						: ''}"
-				>
-					<div class="flex items-start gap-3">
-						<div class="rounded-lg bg-primary/10 p-2 text-primary">
-							<Icon class="size-5" aria-hidden="true" />
-						</div>
-						<div>
-							<p class="font-medium">{addOn.name}</p>
-							<p class="text-sm text-muted-foreground">{addOn.description}</p>
-						</div>
-					</div>
-					<button
-						type="button"
-						role="switch"
-						aria-checked={enabledAddOns[addOn.id]}
-						aria-label={`${enabledAddOns[addOn.id] ? 'Disable' : 'Enable'} ${addOn.name}`}
-						class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border transition-colors {enabledAddOns[
-							addOn.id
-						]
-							? 'border-primary bg-primary'
-							: 'border-input bg-muted'}"
-						onclick={() => toggleAddOn(addOn.id)}
-					>
-						<span
-							class="block size-3.5 rounded-full bg-background shadow-sm transition-transform {enabledAddOns[
-								addOn.id
-							]
-								? 'translate-x-4'
-								: 'translate-x-0.5'}"
-						></span>
-					</button>
-				</div>
-			{/each}
-		</div>
-		<p class="mt-6 text-sm text-muted-foreground">
-			{enabledCount} of {addOns.length} add-ons enabled — billed with your plan.
-		</p>
-	</section>
-
-	<section id="pricing">
-		<div class="flex flex-col items-center gap-4">
-			<h2 class="text-4xl font-bold">Simple subscription pricing</h2>
-			<span class="text-lg text-balance text-muted-foreground"
-				>Choose a billing cycle that suits your cash flow. Every plan includes updates and support.
-			</span>
-			<div
-				class="mt-4 inline-flex items-center rounded-full border bg-muted p-1"
-				role="group"
-				aria-label="Billing cycle"
-			>
-				<button
-					type="button"
-					aria-pressed={billingCycle === 'monthly'}
-					class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors {billingCycle ===
-					'monthly'
-						? 'bg-background text-foreground shadow-sm'
-						: 'text-muted-foreground hover:text-foreground'}"
-					onclick={() => (billingCycle = 'monthly')}
-				>
-					Monthly
-				</button>
-				<button
-					type="button"
-					aria-pressed={billingCycle === 'yearly'}
-					class="cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors {billingCycle ===
-					'yearly'
-						? 'bg-background text-foreground shadow-sm'
-						: 'text-muted-foreground hover:text-foreground'}"
-					onclick={() => (billingCycle = 'yearly')}
-				>
-					Yearly <span class="text-xs text-primary">save 20%</span>
-				</button>
-			</div>
-		</div>
-
-		<div class="mt-12 grid gap-6 lg:grid-cols-3">
-			{#each plans as plan, idx (idx)}
-				<div
-					class="relative flex flex-col rounded-2xl border bg-background/70 p-8 text-left shadow-sm {plan.popular
-						? 'border-primary ring-2 ring-primary/20'
-						: ''}"
-				>
-					{#if plan.popular}
-						<span
-							class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
-						>
-							Most popular
-						</span>
-					{/if}
-					<h3 class="text-xl font-semibold">{plan.name}</h3>
-					<p class="mt-2 text-sm leading-6 text-muted-foreground">{plan.description}</p>
-					<div class="mt-6 flex items-baseline gap-1">
-						<span class="text-4xl font-bold">{planPrice(plan)}</span>
-						{#if plan.monthly !== null}
-							<span class="text-sm text-muted-foreground">/month</span>
-						{/if}
-					</div>
-					<p class="mt-1 text-xs text-muted-foreground">{planBillingNote(plan)}</p>
-					<ul class="mt-6 flex flex-col gap-3 text-sm">
-						{#each plan.features as feature (feature)}
-							<li class="flex items-start gap-2.5">
-								<Check class="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-								<span>{feature}</span>
-							</li>
-						{/each}
-					</ul>
-					<Button
-						class="mt-8 w-full"
-						variant={plan.popular ? 'default' : 'outline'}
-						href={plan.monthly === null
-							? 'mailto:brightloop@tsuzat.com?subject=Brightloop%20Enterprise%20plan'
-							: resolve('/signup')}
-					>
-						{plan.cta}
-					</Button>
-				</div>
-			{/each}
-		</div>
-
-		<p class="mt-8 text-sm text-muted-foreground">
-			Add-ons are billed alongside your plan and can be switched on or off at any time.
-		</p>
 	</section>
 
 	<section id="faqs" class="my-4">
@@ -802,28 +552,23 @@
 		</div>
 	</section>
 
-	<footer class="flex items-center justify-center gap-2 border-t py-4 text-sm">
-		© {year} Brightloop Software. All rights reserved •
-		<!-- eslint-disable svelte/no-navigation-without-resolve -- routes not built yet -->
-		<a href="/terms" title="Open Terms of Use" class="text-primary">Terms of Use</a>
-		•
-		<a href="/privacy" title="Open Privacy Policy" class="text-primary">Privacy Policy</a>
-		<!-- eslint-enable svelte/no-navigation-without-resolve -->
-		•
-		<a href="mailto:brightloop@tsuzat.com" title="Contact Us" class="text-primary">Contact Us</a>
+	<footer class="border-t px-4 py-4 text-center text-sm">
+		<p>© {year} Brightloop Software. All rights reserved.</p>
+		<div class="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+			<!-- eslint-disable svelte/no-navigation-without-resolve -- routes not built yet -->
+			<a href="/terms" title="Open Terms of Use" class="text-primary">Terms of Use</a>
+			<span aria-hidden="true">•</span>
+			<a href="/privacy" title="Open Privacy Policy" class="text-primary">Privacy Policy</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+			<span aria-hidden="true">•</span>
+			<a href="mailto:brightloop@tsuzat.com" title="Contact Us" class="text-primary">Contact Us</a>
+		</div>
 	</footer>
 </main>
 
 <style>
 	section {
 		padding-top: 5rem;
-	}
-
-	.highlight {
-		background-color: var(--color-primary);
-		padding: 0 4px;
-		border-radius: 4px;
-		color: var(--color-foreground);
 	}
 
 	:global(section.hide) {
