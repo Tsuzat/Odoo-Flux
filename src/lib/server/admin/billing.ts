@@ -8,7 +8,7 @@ import {
 	subscription,
 	type Discount
 } from '#lib/server/db/schema.ts';
-import { addDays, addPeriod, round2 } from './operations.ts';
+import { addDays, addPeriod, notifyInvoiceGenerated, round2 } from './operations.ts';
 import { deleteCached } from '../cache.ts';
 import { DASHBOARD_CACHE_KEY } from './dashboard.ts';
 
@@ -201,6 +201,9 @@ export async function generateInvoiceForSubscription(
 		return inv;
 	});
 
+	// Let the customer know a new invoice exists (fire-and-forget).
+	void notifyInvoiceGenerated(created.id);
+
 	return { invoiceId: created.id, number: created.number };
 }
 
@@ -281,6 +284,21 @@ export async function runBilling(today: string): Promise<BillingRunSummary> {
 				message: e instanceof Error ? e.message : 'Unknown error'
 			});
 		}
+	}
+
+	// Auto-close sweep: plans that close on their own when they end,
+	// even when no billing period happens to be due today.
+	const expirable = await db.query.subscription.findMany({
+		where: and(
+			eq(subscription.status, 'active'),
+			sql`${subscription.expiryDate} is not null and ${subscription.expiryDate} <= ${today}`
+		),
+		with: { plan: true }
+	});
+	for (const sub of expirable) {
+		if (!sub.plan.autoClose) continue;
+		await db.update(subscription).set({ status: 'closed' }).where(eq(subscription.id, sub.id));
+		if (!summary.closed.includes(sub.number)) summary.closed.push(sub.number);
 	}
 
 	await deleteCached(DASHBOARD_CACHE_KEY);

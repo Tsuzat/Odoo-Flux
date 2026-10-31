@@ -1,12 +1,16 @@
 <script lang="ts">
 	import {
+		getMyAddonsQuery,
 		getMySubscriptionQuery,
 		getMySubscriptionsQuery,
+		toggleMyAddonCommand,
 		transitionMySubscriptionCommand
 	} from '../data.remote.ts';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import * as Select from '#lib/components/ui/select/index.ts';
+	import { Switch } from '#lib/components/ui/switch/index.ts';
 	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import { Badge, type BadgeVariant } from '#lib/components/ui/badge/index.ts';
 	import { Button } from '#lib/components/ui/button/index.ts';
@@ -32,7 +36,32 @@
 
 	let selectedId = $state<string | null>(null);
 	const detail = $derived(selectedId ? getMySubscriptionQuery(selectedId) : null);
+	const addonsQ = $derived(selectedId ? getMyAddonsQuery(selectedId) : null);
 	let acting = $state<string | null>(null);
+	let addonVariants = $state<Record<string, string>>({});
+	let togglingAddon = $state<string | null>(null);
+
+	async function toggleAddon(
+		subscriptionId: string,
+		productId: string,
+		variantId: string,
+		enabled: boolean
+	) {
+		togglingAddon = productId;
+		try {
+			await toggleMyAddonCommand({
+				subscriptionId,
+				productId,
+				variantId: variantId || null,
+				enabled
+			});
+			toast.success(enabled ? 'Add-on switched on.' : 'Add-on switched off.');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not change the add-on.');
+		} finally {
+			togglingAddon = null;
+		}
+	}
 
 	async function act(id: string, action: 'pause' | 'resume' | 'renew' | 'close') {
 		acting = action;
@@ -202,6 +231,69 @@
 						{/each}
 					</Table.Body>
 				</Table.Root>
+
+				{#if ['confirmed', 'active', 'paused'].includes(s.status)}
+					<div class="flex flex-col gap-3 border-t pt-4">
+						<div class="flex flex-col gap-1">
+							<p class="text-sm font-medium">Add-ons</p>
+							<p class="text-xs text-muted-foreground">
+								Switch add-ons on or off anytime — changes apply from your next invoice.
+							</p>
+						</div>
+						{#if addonsQ?.error}
+							<p class="text-sm text-destructive">{addonsQ.error.message}</p>
+						{:else if !addonsQ?.current}
+							<Skeleton class="h-20" />
+						{:else if addonsQ.current.addons.length === 0}
+							<p class="text-sm text-muted-foreground">No add-ons available right now.</p>
+						{:else}
+							{#each addonsQ.current.addons as addon (addon.id)}
+								{@const variantId = addonVariants[addon.id] ?? ''}
+								{@const variant = addon.variants.find((v) => v.id === variantId)}
+								{@const line = addonsQ.current.lines.find(
+									(l) => l.productId === addon.id && (l.variantId ?? '') === variantId
+								)}
+								<div class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+									<div class="flex min-w-0 flex-col gap-1">
+										<span class="text-sm font-medium">{addon.name}</span>
+										<span class="text-xs text-muted-foreground">
+											{formatCurrency(
+												Number(addon.salesPrice) + (variant ? Number(variant.extraPrice) : 0)
+											)} per period
+										</span>
+										{#if addon.variants.length > 0}
+											<Select.Root
+												type="single"
+												value={variantId}
+												onValueChange={(v) => (addonVariants[addon.id] = v)}
+											>
+												<Select.Trigger class="w-44" aria-label={`${addon.name} variant`}>
+													{variant ? `${variant.attribute}: ${variant.value}` : 'No variant'}
+												</Select.Trigger>
+												<Select.Content>
+													<Select.Group>
+														{#each addon.variants as v (v.id)}
+															<Select.Item
+																value={v.id}
+																label={`${v.attribute}: ${v.value} (+${formatCurrency(v.extraPrice)})`}
+															/>
+														{/each}
+													</Select.Group>
+												</Select.Content>
+											</Select.Root>
+										{/if}
+									</div>
+									<Switch
+										checked={!!line}
+										disabled={togglingAddon === addon.id}
+										aria-label={`${addon.name} add-on`}
+										onCheckedChange={(checked) => toggleAddon(s.id, addon.id, variantId, checked)}
+									/>
+								</div>
+							{/each}
+						{/if}
+					</div>
+				{/if}
 
 				<div class="flex flex-col gap-2">
 					<p class="text-sm font-medium">Invoices ({s.invoices.length})</p>

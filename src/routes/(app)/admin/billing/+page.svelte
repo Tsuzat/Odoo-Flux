@@ -1,5 +1,9 @@
 <script lang="ts">
-	import { getBillingPreview, runBillingCommand } from '../data.remote.ts';
+	import {
+		getBillingPreview,
+		runBillingCommand,
+		sendOverdueRemindersCommand
+	} from '../data.remote.ts';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -11,6 +15,7 @@
 	import { BarSpinner } from '#lib/components/custom/index.ts';
 
 	import CirclePlayIcon from '@lucide/svelte/icons/circle-play';
+	import MailIcon from '@lucide/svelte/icons/mail';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	const preview = getBillingPreview();
@@ -19,6 +24,26 @@
 
 	let running = $state(false);
 	let summary = $state<BillingRunSummary | null>(null);
+
+	type ReminderSummary = Awaited<ReturnType<typeof sendOverdueRemindersCommand>>;
+	let reminding = $state(false);
+	let reminderSummary = $state<ReminderSummary | null>(null);
+
+	async function sendReminders() {
+		reminding = true;
+		try {
+			reminderSummary = await sendOverdueRemindersCommand();
+			toast.success(
+				reminderSummary.sent > 0
+					? `Sent ${reminderSummary.sent} overdue reminder(s).`
+					: 'No reminders were due today (weekly cadence).'
+			);
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not send reminders.');
+		} finally {
+			reminding = false;
+		}
+	}
 
 	const dueTotal = $derived((preview.current ?? []).reduce((sum, s) => sum + s.estimatedAmount, 0));
 
@@ -57,18 +82,47 @@
 				nothing is ever billed twice.
 			</p>
 		</div>
-		<Button
-			onclick={runBilling}
-			disabled={running || !preview.current || preview.current.length === 0}
-		>
-			{#if running}
-				<BarSpinner role="status" aria-label="Running billing" />
-			{:else}
-				<CirclePlayIcon data-icon="inline-start" />
-			{/if}
-			Run billing now
-		</Button>
+		<div class="flex items-center gap-2">
+			<Button variant="outline" onclick={sendReminders} disabled={reminding}>
+				{#if reminding}
+					<BarSpinner role="status" aria-label="Sending reminders" />
+				{:else}
+					<MailIcon data-icon="inline-start" />
+				{/if}
+				Send overdue reminders
+			</Button>
+			<Button
+				onclick={runBilling}
+				disabled={running || !preview.current || preview.current.length === 0}
+			>
+				{#if running}
+					<BarSpinner role="status" aria-label="Running billing" />
+				{:else}
+					<CirclePlayIcon data-icon="inline-start" />
+				{/if}
+				Run billing now
+			</Button>
+		</div>
 	</div>
+
+	{#if reminderSummary}
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Overdue reminders</Card.Title>
+				<Card.Description>
+					{reminderSummary.sent} sent · {reminderSummary.considered} overdue invoice(s) considered (weekly
+					cadence: day 1, then every 7 days)
+				</Card.Description>
+			</Card.Header>
+			{#if reminderSummary.errors.length > 0}
+				<Card.Content class="flex flex-col gap-1">
+					{#each reminderSummary.errors as err (err)}
+						<p class="text-sm text-destructive">{err}</p>
+					{/each}
+				</Card.Content>
+			{/if}
+		</Card.Root>
+	{/if}
 
 	{#if preview.error}
 		<Card.Root>
@@ -171,4 +225,9 @@
 			</Card.Content>
 		</Card.Root>
 	{/if}
+
+	<p class="text-xs text-muted-foreground">
+		Automate this: a Railway cron service POSTs to <code>/api/cron/billing</code> daily (header
+		<code>x-cron-secret</code>) to run billing and send overdue reminders — setup in the README.
+	</p>
 </div>

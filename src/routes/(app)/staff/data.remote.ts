@@ -5,6 +5,7 @@ import { getStaffOverview } from '#lib/server/staff.ts';
 import { listCustomers } from '#lib/server/admin/users.ts';
 import { listPlans, listProducts, listTaxes } from '#lib/server/admin/catalog.ts';
 import {
+	addSubscriptionLine,
 	cancelInvoice,
 	confirmInvoice,
 	createSubscription,
@@ -16,8 +17,10 @@ import {
 	listSubscriptions,
 	recordPayment,
 	deletePayment,
+	removeSubscriptionLine,
 	sendInvoice,
 	transitionSubscription,
+	updateSubscriptionLineQuantity,
 	type SubscriptionAction
 } from '#lib/server/admin/operations.ts';
 
@@ -104,6 +107,60 @@ export const transitionSubscriptionCommand = command(
 			return row;
 		} catch (e) {
 			error(400, e instanceof Error ? e.message : 'Could not update the subscription.');
+		}
+	}
+);
+
+/* Subscription line editing (add-ons on/off after purchase) */
+
+const lineInput = z.object({
+	productId: id,
+	variantId: id.nullable().optional(),
+	quantity: z.number().int().positive(),
+	taxId: id.nullable().optional()
+});
+
+export const addSubscriptionLineCommand = command(
+	z.object({ subscriptionId: id, data: lineInput }),
+	async ({ subscriptionId, data }) => {
+		requireStaff();
+		try {
+			const row = await addSubscriptionLine(subscriptionId, data);
+			void getSubscriptions().refresh();
+			void getSubscription(subscriptionId).refresh();
+			return row;
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not add the line.');
+		}
+	}
+);
+
+export const updateSubscriptionLineCommand = command(
+	z.object({ lineId: id, subscriptionId: id, quantity: z.number().int().min(1) }),
+	async ({ lineId, subscriptionId, quantity }) => {
+		requireStaff();
+		try {
+			const row = await updateSubscriptionLineQuantity(lineId, quantity);
+			void getSubscriptions().refresh();
+			void getSubscription(subscriptionId).refresh();
+			return row;
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not update the line.');
+		}
+	}
+);
+
+export const removeSubscriptionLineCommand = command(
+	z.object({ lineId: id, subscriptionId: id }),
+	async ({ lineId, subscriptionId }) => {
+		requireStaff();
+		try {
+			await removeSubscriptionLine(lineId);
+			void getSubscriptions().refresh();
+			void getSubscription(subscriptionId).refresh();
+			return { ok: true };
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not remove the line.');
 		}
 	}
 );

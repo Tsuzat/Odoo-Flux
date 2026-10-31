@@ -7,7 +7,6 @@
 	} from '../data.remote.ts';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
-	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
 	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
@@ -24,9 +23,7 @@
 	import { BarSpinner } from '#lib/components/custom/index.ts';
 	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
-	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	type PaymentRow = NonNullable<typeof payments.current>[number];
@@ -174,7 +171,6 @@
 							<Table.Head>Method</Table.Head>
 							<Table.Head>Note</Table.Head>
 							<Table.Head class="text-right">Amount</Table.Head>
-							<Table.Head class="text-right">Actions</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
@@ -190,25 +186,6 @@
 									{p.note ?? '—'}
 								</Table.Cell>
 								<Table.Cell class="text-right">{formatCurrency(p.amount)}</Table.Cell>
-								<Table.Cell class="text-right">
-									<DropdownMenu.Root>
-										<DropdownMenu.Trigger>
-											{#snippet child({ props })}
-												<Button {...props} variant="ghost" size="icon" aria-label="Payment actions">
-													<EllipsisIcon />
-												</Button>
-											{/snippet}
-										</DropdownMenu.Trigger>
-										<DropdownMenu.Content align="end">
-											<DropdownMenu.Group>
-												<DropdownMenu.Item variant="destructive" onclick={() => (deleteTarget = p)}>
-													<Trash2Icon />
-													Delete
-												</DropdownMenu.Item>
-											</DropdownMenu.Group>
-										</DropdownMenu.Content>
-									</DropdownMenu.Root>
-								</Table.Cell>
 							</Table.Row>
 						{/each}
 					</Table.Body>

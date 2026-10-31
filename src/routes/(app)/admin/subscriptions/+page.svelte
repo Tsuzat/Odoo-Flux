@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		addSubscriptionLineCommand,
 		createSubscriptionCommand,
 		deleteSubscriptionCommand,
 		generateInvoiceCommand,
@@ -10,7 +11,9 @@
 		getSubscription,
 		getSubscriptions,
 		getTaxes,
-		transitionSubscriptionCommand
+		removeSubscriptionLineCommand,
+		transitionSubscriptionCommand,
+		updateSubscriptionLineCommand
 	} from '../data.remote.ts';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
@@ -145,6 +148,58 @@
 	let selectedId = $state<string | null>(null);
 	const detail = $derived(selectedId ? getSubscription(selectedId) : null);
 	let acting = $state<string | null>(null);
+
+	let addonForm = $state({ productId: '', variantId: '', quantity: 1, taxId: '' });
+	let addingLine = $state(false);
+
+	async function addLine(subscriptionId: string) {
+		if (!addonForm.productId || !addonForm.quantity) {
+			toast.error('Choose a product and quantity.');
+			return;
+		}
+		addingLine = true;
+		try {
+			await addSubscriptionLineCommand({
+				subscriptionId,
+				data: {
+					productId: addonForm.productId,
+					variantId: addonForm.variantId || null,
+					quantity: addonForm.quantity,
+					taxId: addonForm.taxId || null
+				}
+			});
+			toast.success('Line added — it will appear on the next invoice.');
+			addonForm = { productId: '', variantId: '', quantity: 1, taxId: '' };
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not add the line.');
+		} finally {
+			addingLine = false;
+		}
+	}
+
+	async function changeQty(
+		subscriptionId: string,
+		line: { id: string; quantity: number },
+		event: Event
+	) {
+		const quantity = Number((event.currentTarget as HTMLInputElement).value);
+		if (!Number.isInteger(quantity) || quantity < 1 || quantity === line.quantity) return;
+		try {
+			await updateSubscriptionLineCommand({ lineId: line.id, subscriptionId, quantity });
+			toast.success('Quantity updated.');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not update the quantity.');
+		}
+	}
+
+	async function removeLine(subscriptionId: string, lineId: string) {
+		try {
+			await removeSubscriptionLineCommand({ lineId, subscriptionId });
+			toast.success('Line removed.');
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : 'Could not remove the line.');
+		}
+	}
 
 	async function transition(id: string, action: Action) {
 		acting = action;
@@ -377,7 +432,7 @@
 							</Select.Trigger>
 							<Select.Content>
 								<Select.Group>
-									{#each plans.current ?? [] as p (p.id)}
+									{#each (plans.current ?? []).filter((p) => p.active) as p (p.id)}
 										<Select.Item value={p.id} label={`${p.name} (${humanize(p.billingPeriod)})`} />
 									{/each}
 								</Select.Group>
@@ -571,35 +626,169 @@
 					</span>
 				</div>
 
-				<Table.Root>
-					<Table.Header>
-						<Table.Row>
-							<Table.Head>Product</Table.Head>
-							<Table.Head class="text-right">Qty</Table.Head>
-							<Table.Head class="text-right">Unit</Table.Head>
-							<Table.Head class="text-right">Amount</Table.Head>
-						</Table.Row>
-					</Table.Header>
-					<Table.Body>
-						{#each s.lines as l (l.id)}
+				<div class="flex flex-col gap-3">
+					<p class="text-sm font-medium">Lines & add-ons</p>
+					<Table.Root>
+						<Table.Header>
 							<Table.Row>
-								<Table.Cell>
-									<div class="flex flex-col">
-										<span>{l.product.name}</span>
-										<span class="text-xs text-muted-foreground">
-											{#if l.variant}{l.variant.attribute}: {l.variant.value} ·
-											{/if}
-											{l.tax ? `Tax ${l.tax.name}` : 'No tax'}
-										</span>
-									</div>
-								</Table.Cell>
-								<Table.Cell class="text-right">{l.quantity}</Table.Cell>
-								<Table.Cell class="text-right">{formatCurrency(l.unitPrice)}</Table.Cell>
-								<Table.Cell class="text-right">{formatCurrency(l.amount)}</Table.Cell>
+								<Table.Head>Product</Table.Head>
+								<Table.Head class="text-right">Qty</Table.Head>
+								<Table.Head class="text-right">Unit</Table.Head>
+								<Table.Head class="text-right">Amount</Table.Head>
+								<Table.Head class="text-right">Remove</Table.Head>
 							</Table.Row>
-						{/each}
-					</Table.Body>
-				</Table.Root>
+						</Table.Header>
+						<Table.Body>
+							{#each s.lines as l (l.id)}
+								<Table.Row>
+									<Table.Cell>
+										<div class="flex flex-col">
+											<span>{l.product.name}</span>
+											<span class="text-xs text-muted-foreground">
+												{#if l.variant}{l.variant.attribute}: {l.variant.value} ·
+												{/if}
+												{l.tax ? `Tax ${l.tax.name}` : 'No tax'}
+											</span>
+										</div>
+									</Table.Cell>
+									<Table.Cell class="text-right">
+										{#if s.status !== 'closed'}
+											<Input
+												type="number"
+												min="1"
+												step="1"
+												class="ml-auto w-20 text-right"
+												value={l.quantity}
+												aria-label="Line quantity"
+												onchange={(e) => changeQty(s.id, l, e)}
+											/>
+										{:else}
+											{l.quantity}
+										{/if}
+									</Table.Cell>
+									<Table.Cell class="text-right">{formatCurrency(l.unitPrice)}</Table.Cell>
+									<Table.Cell class="text-right">{formatCurrency(l.amount)}</Table.Cell>
+									<Table.Cell class="text-right">
+										{#if s.status !== 'closed'}
+											<Button
+												variant="destructive"
+												size="icon"
+												aria-label="Remove line"
+												onclick={() => removeLine(s.id, l.id)}
+											>
+												<Trash2Icon />
+											</Button>
+										{/if}
+									</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+
+					{#if s.status !== 'closed'}
+						<form
+							class="flex flex-col gap-3 rounded-lg border p-3"
+							onsubmit={(e) => {
+								e.preventDefault();
+								addLine(s.id);
+							}}
+						>
+							<p class="text-sm font-medium">Add product / add-on</p>
+							<div class="grid grid-cols-2 gap-3">
+								<Field.Field>
+									<Field.FieldLabel for="add-product">Product</Field.FieldLabel>
+									<Select.Root
+										type="single"
+										value={addonForm.productId}
+										onValueChange={(v) => {
+											addonForm.productId = v;
+											addonForm.variantId = '';
+										}}
+									>
+										<Select.Trigger id="add-product" class="w-full">
+											{productById(addonForm.productId)?.name ?? 'Select product'}
+										</Select.Trigger>
+										<Select.Content>
+											<Select.Group>
+												{#each products.current ?? [] as p (p.id)}
+													<Select.Item value={p.id} label={p.name} />
+												{/each}
+											</Select.Group>
+										</Select.Content>
+									</Select.Root>
+								</Field.Field>
+								<Field.Field>
+									<Field.FieldLabel for="add-variant">Variant</Field.FieldLabel>
+									<Select.Root
+										type="single"
+										value={addonForm.variantId}
+										onValueChange={(v) => (addonForm.variantId = v)}
+									>
+										<Select.Trigger id="add-variant" class="w-full">
+											{productById(addonForm.productId)?.variants.find(
+												(v) => v.id === addonForm.variantId
+											)
+												? `${productById(addonForm.productId)?.variants.find((v) => v.id === addonForm.variantId)?.attribute}: ${productById(addonForm.productId)?.variants.find((v) => v.id === addonForm.variantId)?.value}`
+												: 'No variant'}
+										</Select.Trigger>
+										<Select.Content>
+											<Select.Group>
+												{#each productById(addonForm.productId)?.variants ?? [] as v (v.id)}
+													<Select.Item
+														value={v.id}
+														label={`${v.attribute}: ${v.value} (+${formatCurrency(v.extraPrice)})`}
+													/>
+												{/each}
+											</Select.Group>
+										</Select.Content>
+									</Select.Root>
+								</Field.Field>
+							</div>
+							<div class="flex items-end gap-3">
+								<Field.Field class="max-w-28">
+									<Field.FieldLabel for="add-qty">Qty</Field.FieldLabel>
+									<Input
+										id="add-qty"
+										type="number"
+										min="1"
+										step="1"
+										bind:value={addonForm.quantity}
+										required
+									/>
+								</Field.Field>
+								<Field.Field class="flex-1">
+									<Field.FieldLabel for="add-tax">Tax</Field.FieldLabel>
+									<Select.Root
+										type="single"
+										value={addonForm.taxId}
+										onValueChange={(v) => (addonForm.taxId = v)}
+									>
+										<Select.Trigger id="add-tax" class="w-full">
+											{taxes.current?.find((t) => t.id === addonForm.taxId)?.name ?? 'No tax'}
+										</Select.Trigger>
+										<Select.Content>
+											<Select.Group>
+												{#each taxes.current ?? [] as t (t.id)}
+													<Select.Item
+														value={t.id}
+														label={`${t.name} (${Number(t.ratePercent)}%)`}
+													/>
+												{/each}
+											</Select.Group>
+										</Select.Content>
+									</Select.Root>
+								</Field.Field>
+								<Button type="submit" size="sm" disabled={addingLine}>
+									{#if addingLine}<BarSpinner role="status" aria-label="Adding line" />{/if}
+									Add line
+								</Button>
+							</div>
+							<p class="text-xs text-muted-foreground">
+								Changes apply from the next invoice — invoices already generated don't change.
+							</p>
+						</form>
+					{/if}
+				</div>
 
 				<div class="flex flex-col gap-2">
 					<p class="text-sm font-medium">Invoices ({s.invoices.length})</p>

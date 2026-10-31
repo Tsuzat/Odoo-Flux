@@ -6,3 +6,7 @@ export { getPasswordResetTemplate } from './reset-password.ts';
 export type { PasswordResetEmailOptions } from './reset-password.ts';
 export { getExistingUserSignupTemplate } from './existing-user.ts';
 export type { ExistingUserSignupEmailOptions } from './existing-user.ts';
+export { getInvoiceGeneratedTemplate } from './invoice-generated.ts';
+export type { InvoiceGeneratedEmailOptions } from './invoice-generated.ts';
+export { getInvoiceOverdueTemplate } from './invoice-overdue.ts';
+export type { InvoiceOverdueEmailOptions } from './invoice-overdue.ts';

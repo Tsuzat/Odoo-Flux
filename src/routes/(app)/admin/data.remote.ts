@@ -24,6 +24,7 @@ import {
 	updateVariant
 } from '#lib/server/admin/catalog.ts';
 import {
+	addSubscriptionLine,
 	cancelInvoice,
 	confirmInvoice,
 	createQuotationTemplate,
@@ -38,9 +39,12 @@ import {
 	listQuotationTemplates,
 	listSubscriptions,
 	recordPayment,
+	removeSubscriptionLine,
 	sendInvoice,
+	sendOverdueReminders,
 	transitionSubscription,
 	updateQuotationTemplate,
+	updateSubscriptionLineQuantity,
 	type SubscriptionAction
 } from '#lib/server/admin/operations.ts';
 import {
@@ -448,6 +452,53 @@ export const transitionSubscriptionCommand = command(
 	}
 );
 
+/* Subscription line editing (add-ons on/off after purchase) */
+
+export const addSubscriptionLineCommand = command(
+	z.object({ subscriptionId: id, data: subscriptionLineInput }),
+	async ({ subscriptionId, data }) => {
+		requireAdmin();
+		try {
+			const row = await addSubscriptionLine(subscriptionId, data);
+			void getSubscriptions().refresh();
+			void getSubscription(subscriptionId).refresh();
+			return row;
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not add the line.');
+		}
+	}
+);
+
+export const updateSubscriptionLineCommand = command(
+	z.object({ lineId: id, subscriptionId: id, quantity: z.number().int().min(1) }),
+	async ({ lineId, subscriptionId, quantity }) => {
+		requireAdmin();
+		try {
+			const row = await updateSubscriptionLineQuantity(lineId, quantity);
+			void getSubscriptions().refresh();
+			void getSubscription(subscriptionId).refresh();
+			return row;
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not update the line.');
+		}
+	}
+);
+
+export const removeSubscriptionLineCommand = command(
+	z.object({ lineId: id, subscriptionId: id }),
+	async ({ lineId, subscriptionId }) => {
+		requireAdmin();
+		try {
+			await removeSubscriptionLine(lineId);
+			void getSubscriptions().refresh();
+			void getSubscription(subscriptionId).refresh();
+			return { ok: true };
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not remove the line.');
+		}
+	}
+);
+
 export const deleteSubscriptionCommand = command(id, async (id) => {
 	requireAdmin();
 	try {
@@ -648,6 +699,12 @@ export const runBillingCommand = command(async () => {
 	void getInvoices().refresh();
 	void getDashboard().refresh();
 	return summary;
+});
+
+/** Email payment reminders for confirmed invoices past their due date. */
+export const sendOverdueRemindersCommand = command(async () => {
+	requireAdmin();
+	return sendOverdueReminders(new Date().toISOString().slice(0, 10));
 });
 
 /* ───────── staff & customers (Better Auth admin plugin) ───────── */

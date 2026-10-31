@@ -18,5 +18,9 @@ export const variables = defineEnvVars({
 	},
 	ZEPTO_MAIL_API_KEY: {
 		description: 'Zoho Mail API key.'
+	},
+	CRON_SECRET: {
+		description:
+			'Shared secret for the scheduled-jobs endpoint (`POST /api/cron/billing`), sent as the `x-cron-secret` header by the Railway cron service.'
 	}
 });

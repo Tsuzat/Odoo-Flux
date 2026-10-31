@@ -1,7 +1,13 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
-import { customer, invoice, payment, subscription, user } from '#lib/server/db/schema.ts';
-import { round2, transitionSubscription, type SubscriptionAction } from './admin/operations.ts';
+import { customer, invoice, payment, product, subscription, user } from '#lib/server/db/schema.ts';
+import {
+	addSubscriptionLine,
+	removeSubscriptionLine,
+	round2,
+	transitionSubscription,
+	type SubscriptionAction
+} from './admin/operations.ts';
 
 /**
  * Customer portal data (PDF: "customers see only their own
@@ -85,6 +91,57 @@ export async function getMySubscription(customerId: string, id: string) {
 	});
 	if (!sub || sub.customerId !== customerId) return null;
 	return sub;
+}
+
+/* ───────── add-ons (switch on/off after purchase) ───────── */
+
+/** Active add-on products a customer can switch onto a subscription. */
+export function listAddonProducts() {
+	return db.query.product.findMany({
+		where: and(eq(product.active, true), eq(product.type, 'addon')),
+		with: { variants: true },
+		orderBy: asc(product.name)
+	});
+}
+
+/**
+ * Switch an add-on on (adds a quantity-1 line) or off (removes the
+ * line) on the customer's own subscription. Applies from the next
+ * invoice — already-issued invoices are snapshots.
+ */
+export async function toggleMyAddon(
+	customerId: string,
+	subscriptionId: string,
+	productId: string,
+	variantId: string | null,
+	enabled: boolean
+) {
+	const sub = await getMySubscription(customerId, subscriptionId);
+	if (!sub) throw new Error('Subscription not found.');
+	if (!['confirmed', 'active', 'paused'].includes(sub.status)) {
+		throw new Error('Add-ons can be changed on confirmed, active or paused subscriptions.');
+	}
+
+	const addon = await db.query.product.findFirst({ where: eq(product.id, productId) });
+	if (!addon || addon.type !== 'addon' || !addon.active) {
+		throw new Error('That add-on is not available.');
+	}
+
+	const existing = sub.lines.find(
+		(l) => l.productId === productId && (l.variantId ?? null) === (variantId ?? null)
+	);
+
+	if (enabled && !existing) {
+		await addSubscriptionLine(subscriptionId, {
+			productId,
+			variantId,
+			quantity: 1,
+			taxId: null
+		});
+	} else if (!enabled && existing) {
+		await removeSubscriptionLine(existing.id);
+	}
+	return getMySubscription(customerId, subscriptionId);
 }
 
 /** Actions a customer may run on their own subscription. */

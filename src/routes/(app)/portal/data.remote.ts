@@ -7,9 +7,11 @@ import {
 	getMyInvoice,
 	getMySubscription,
 	getPortalOverview,
+	listAddonProducts,
 	listMyInvoices,
 	listMyPayments,
 	listMySubscriptions,
+	toggleMyAddon,
 	transitionMySubscription,
 	updateMyProfile
 } from '#lib/server/portal.ts';
@@ -114,6 +116,43 @@ export const payInvoiceCommand = command(
 			return { payment, invoiceNumber: inv.number, amount: balance, methodLabel: rail.label };
 		} catch (e) {
 			error(400, e instanceof Error ? e.message : 'Payment failed. Please try again.');
+		}
+	}
+);
+
+/* ───────── add-ons ───────── */
+
+export const getMyAddonsQuery = query(id, async (subscriptionId) => {
+	const { customer } = await requireCustomer();
+	const sub = await getMySubscription(customer.id, subscriptionId);
+	if (!sub) error(404, 'Subscription not found.');
+	const addons = await listAddonProducts();
+	return { addons, lines: sub.lines, status: sub.status };
+});
+
+export const toggleMyAddonCommand = command(
+	z.object({
+		subscriptionId: id,
+		productId: id,
+		variantId: id.nullable(),
+		enabled: z.boolean()
+	}),
+	async ({ subscriptionId, productId, variantId, enabled }) => {
+		const { customer } = await requireCustomer();
+		try {
+			const updated = await toggleMyAddon(
+				customer.id,
+				subscriptionId,
+				productId,
+				variantId,
+				enabled
+			);
+			void getMySubscriptionsQuery().refresh();
+			void getMySubscriptionQuery(subscriptionId).refresh();
+			void getMyAddonsQuery(subscriptionId).refresh();
+			return updated;
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Could not change the add-on.');
 		}
 	}
 );

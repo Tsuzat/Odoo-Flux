@@ -1,4 +1,4 @@
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { db } from '#lib/server/db/index.ts';
 import {
 	customer,
@@ -18,6 +18,8 @@ import {
 } from '#lib/server/db/schema.ts';
 import { sendEmail } from '../email/index.ts';
 import { baseEmailTemplate, APP_NAME } from '../email/templates/base.ts';
+import { getInvoiceGeneratedTemplate } from '../email/templates/invoice-generated.ts';
+import { getInvoiceOverdueTemplate } from '../email/templates/invoice-overdue.ts';
 import { ORIGIN } from '$app/env/private';
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -107,6 +109,13 @@ async function priceLine(line: SubscriptionLineInput) {
 export async function createSubscription(input: CreateSubscriptionInput) {
 	const planRow = await db.query.plan.findFirst({ where: eq(plan.id, input.planId) });
 	if (!planRow) throw new Error('Plan not found.');
+	if (!planRow.active) throw new Error('This plan is inactive and cannot be sold.');
+	if (input.startDate < planRow.validFrom) {
+		throw new Error(`This plan is not available before ${planRow.validFrom}.`);
+	}
+	if (planRow.validTo && input.startDate > planRow.validTo) {
+		throw new Error(`This plan stopped being available on ${planRow.validTo}.`);
+	}
 	const customerRow = await db.query.customer.findFirst({
 		where: eq(customer.id, input.customerId)
 	});
@@ -206,6 +215,14 @@ export async function transitionSubscription(id: string, action: SubscriptionAct
 	if (!rule.from.includes(sub.status)) {
 		throw new Error(`Cannot ${action.replace('-', ' ')} a subscription that is ${sub.status}.`);
 	}
+	if (action === 'confirm') {
+		const today = new Date().toISOString().slice(0, 10);
+		if (sub.quotationValidUntil && sub.quotationValidUntil < today) {
+			throw new Error(
+				`This quotation expired on ${sub.quotationValidUntil}. Create a fresh subscription from the template.`
+			);
+		}
+	}
 	if (action === 'pause' && !sub.plan.pausable)
 		throw new Error('This plan does not allow pausing.');
 	if (action === 'close') {
@@ -238,6 +255,82 @@ export async function deleteSubscription(id: string) {
 		throw new Error('Only draft or quotation subscriptions can be deleted.');
 	}
 	await db.delete(subscription).where(eq(subscription.id, id));
+}
+
+/* ───────── subscription line editing (add-ons on/off) ─────────
+ * Lines can be changed after purchase; invoices already generated
+ * are snapshots and are never rewritten — changes apply from the
+ * next billing period.
+ */
+
+async function assertEditableSubscription(subscriptionId: string) {
+	const sub = await db.query.subscription.findFirst({
+		where: eq(subscription.id, subscriptionId),
+		with: { plan: true, lines: true }
+	});
+	if (!sub) throw new Error('Subscription not found.');
+	if (sub.status === 'closed') {
+		throw new Error('A closed subscription cannot be changed. Renew it first.');
+	}
+	return sub;
+}
+
+async function assertMinQuantity(
+	sub: Awaited<ReturnType<typeof assertEditableSubscription>>,
+	extraDelta: number
+) {
+	const total = sub.lines.reduce((sum, l) => sum + l.quantity, 0) + extraDelta;
+	if (total < sub.plan.minQuantity) {
+		throw new Error(
+			`This plan needs a minimum quantity of ${sub.plan.minQuantity}; the lines would total ${total}.`
+		);
+	}
+}
+
+export async function addSubscriptionLine(subscriptionId: string, line: SubscriptionLineInput) {
+	await assertEditableSubscription(subscriptionId);
+	const priced = await priceLine(line);
+	const [row] = await db
+		.insert(subscriptionLine)
+		.values({
+			subscriptionId,
+			productId: line.productId,
+			variantId: line.variantId ?? null,
+			quantity: line.quantity,
+			unitPrice: String(priced.unitPrice),
+			taxId: line.taxId ?? null,
+			amount: String(priced.amount)
+		})
+		.returning();
+	return row;
+}
+
+export async function updateSubscriptionLineQuantity(lineId: string, quantity: number) {
+	if (!Number.isInteger(quantity) || quantity < 1) {
+		throw new Error('Quantity must be at least 1.');
+	}
+	const line = await db.query.subscriptionLine.findFirst({
+		where: eq(subscriptionLine.id, lineId)
+	});
+	if (!line) throw new Error('Subscription line not found.');
+	const sub = await assertEditableSubscription(line.subscriptionId);
+	await assertMinQuantity(sub, quantity - line.quantity);
+	const [row] = await db
+		.update(subscriptionLine)
+		.set({ quantity, amount: String(round2(Number(line.unitPrice) * quantity)) })
+		.where(eq(subscriptionLine.id, lineId))
+		.returning();
+	return row;
+}
+
+export async function removeSubscriptionLine(lineId: string) {
+	const line = await db.query.subscriptionLine.findFirst({
+		where: eq(subscriptionLine.id, lineId)
+	});
+	if (!line) throw new Error('Subscription line not found.');
+	const sub = await assertEditableSubscription(line.subscriptionId);
+	await assertMinQuantity(sub, -line.quantity);
+	await db.delete(subscriptionLine).where(eq(subscriptionLine.id, lineId));
 }
 
 /* ───────── quotation templates ───────── */
@@ -341,6 +434,116 @@ export async function cancelInvoice(id: string) {
 		.where(eq(invoice.id, id))
 		.returning();
 	return row;
+}
+
+const inrFmt = new Intl.NumberFormat('en-IN', {
+	style: 'currency',
+	currency: 'INR',
+	maximumFractionDigits: 2
+});
+const dateFmt = new Intl.DateTimeFormat('en-IN', {
+	day: 'numeric',
+	month: 'short',
+	year: 'numeric'
+});
+const fmtDate = (iso: string) => dateFmt.format(new Date(`${iso}T00:00:00`));
+
+/**
+ * Email the customer that a new invoice has been generated for their
+ * subscription. Fire-and-forget: a mail outage (or an unverified
+ * sender) must never fail billing — failures are logged instead.
+ * Called by the billing engine for both billing runs and manual
+ * generation.
+ */
+export async function notifyInvoiceGenerated(invoiceId: string): Promise<void> {
+	try {
+		const detail = await getInvoiceDetail(invoiceId);
+		if (!detail) return;
+		const customerUser = await db.query.user.findFirst({
+			where: eq(user.id, detail.customer.userId)
+		});
+		if (!customerUser?.email) return;
+
+		await sendEmail(
+			customerUser.email,
+			`Invoice ${detail.number} from ${APP_NAME}`,
+			getInvoiceGeneratedTemplate({
+				url: new URL('/signin?next=/portal/invoices', ORIGIN).toString(),
+				name: detail.customer.name,
+				iconUrl: new URL('/favicon.svg', ORIGIN).toString(),
+				invoiceNumber: detail.number,
+				subscriptionNumber: detail.subscription.number,
+				period: `${fmtDate(detail.periodStart)} – ${fmtDate(detail.periodEnd)}`,
+				total: inrFmt.format(Number(detail.total)),
+				dueDate: fmtDate(detail.dueDate)
+			})
+		);
+	} catch (e) {
+		console.error(`Failed to send invoice-generated email for invoice ${invoiceId}`, e);
+	}
+}
+
+/* ───────── overdue reminders ───────── */
+
+export interface OverdueReminderSummary {
+	considered: number;
+	sent: number;
+	errors: string[];
+}
+
+const daysBetween = (fromIso: string, toIso: string) =>
+	Math.round(
+		(new Date(`${toIso}T00:00:00Z`).getTime() - new Date(`${fromIso}T00:00:00Z`).getTime()) /
+			86_400_000
+	);
+
+/**
+ * Email customers whose confirmed invoices are past due. Cadence is
+ * weekly (day 1, then every 7 days) so nobody gets spammed daily.
+ * Sends are awaited — this runs from the cron endpoint and the admin
+ * billing page, where knowing the result matters.
+ */
+export async function sendOverdueReminders(
+	today: string = new Date().toISOString().slice(0, 10)
+): Promise<OverdueReminderSummary> {
+	const rows = await db.query.invoice.findMany({
+		where: and(eq(invoice.status, 'confirmed'), sql`${invoice.dueDate} < ${today}`),
+		with: { customer: true, subscription: true }
+	});
+
+	let sent = 0;
+	const errors: string[] = [];
+	for (const inv of rows) {
+		const days = daysBetween(inv.dueDate, today);
+		if (!(days === 1 || days % 7 === 0)) continue;
+		const balance = round2(Number(inv.total) - Number(inv.amountPaid));
+		if (!(balance > 0)) continue;
+
+		const customerUser = await db.query.user.findFirst({
+			where: eq(user.id, inv.customer.userId)
+		});
+		if (!customerUser?.email) continue;
+
+		try {
+			await sendEmail(
+				customerUser.email,
+				`Payment reminder: invoice ${inv.number} from ${APP_NAME}`,
+				getInvoiceOverdueTemplate({
+					url: new URL(`/signin?next=/portal/pay/${inv.id}`, ORIGIN).toString(),
+					name: inv.customer.name,
+					iconUrl: new URL('/favicon.svg', ORIGIN).toString(),
+					invoiceNumber: inv.number,
+					balance: inrFmt.format(balance),
+					dueDate: fmtDate(inv.dueDate),
+					daysOverdue: days
+				})
+			);
+			sent++;
+		} catch (e) {
+			errors.push(`${inv.number}: ${e instanceof Error ? e.message : 'send failed'}`);
+		}
+	}
+	return { considered: rows.length, sent, errors };
 }
 
 /** Mark sent and email the customer a copy (fire-and-forget delivery). */

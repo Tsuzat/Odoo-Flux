@@ -21,6 +21,7 @@
 	import { SidebarTrigger } from '#lib/components/ui/sidebar/index.ts';
 	import { toast } from 'svelte-sonner';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
+	import { downloadInvoicePdf } from '#lib/pdf.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
 	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
@@ -28,6 +29,7 @@
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import MailIcon from '@lucide/svelte/icons/mail';
 	import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import CircleXIcon from '@lucide/svelte/icons/circle-x';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
@@ -439,6 +441,30 @@
 				{/if}
 
 				<div class="flex flex-wrap gap-2">
+					<Button
+						size="sm"
+						variant="outline"
+						onclick={() =>
+							downloadInvoicePdf({
+								number: inv.number,
+								customerName: inv.customer.name,
+								subscriptionNumber: inv.subscription.number,
+								periodStart: inv.periodStart,
+								periodEnd: inv.periodEnd,
+								issueDate: inv.issueDate,
+								dueDate: inv.dueDate,
+								status: inv.status,
+								lines: inv.lines,
+								subtotal: inv.subtotal,
+								discountTotal: inv.discountTotal,
+								taxTotal: inv.taxTotal,
+								total: inv.total,
+								amountPaid: inv.amountPaid
+							})}
+					>
+						<DownloadIcon data-icon="inline-start" />
+						Download PDF
+					</Button>
 					{#if inv.status === 'draft'}
 						<Button size="sm" disabled={acting !== null} onclick={() => act(inv.id, 'confirm')}>
 							Confirm invoice
