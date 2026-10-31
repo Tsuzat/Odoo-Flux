@@ -5,7 +5,7 @@ export const load = async ({ locals: { user, session }, request: { url } }) => {
 		throw redirect(302, '/signin?next=' + encodeURIComponent(url.toString()));
 	}
 	if (user.role !== 'admin') {
-		throw redirect(304, '/staff');
+		throw redirect(302, '/staff');
 	}
 	return { role: user.role };
 };

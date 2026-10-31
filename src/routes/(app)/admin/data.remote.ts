@@ -670,12 +670,7 @@ export const createStaffCommand = command(
 	z.object({
 		name: z.string().trim().min(1).max(120),
 		email: z.email(),
-		password: z
-			.string()
-			.min(9, 'Password must be more than 8 characters.')
-			.regex(/[A-Z]/, 'Password must include an uppercase letter.')
-			.regex(/[a-z]/, 'Password must include a lowercase letter.')
-			.regex(/[^A-Za-z0-9\s]/, 'Password must include a special character.'),
+		password: z.string().min(6, 'Password must be more than 6 characters.'),
 		role: z.enum(['admin', 'staff'])
 	}),
 	async (data) => {

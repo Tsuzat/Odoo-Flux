@@ -22,6 +22,7 @@
 	import Building2 from '@lucide/svelte/icons/building-2';
 	import ToggleRight from '@lucide/svelte/icons/toggle-right';
 	import MenuIcon from '@lucide/svelte/icons/menu';
+	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import Logout from '@lucide/svelte/icons/log-out';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
@@ -43,6 +44,13 @@
 
 	const canonicalUrl = $derived(`${page.url.origin}/`);
 	const year = new Date().getFullYear();
+
+	/** Where "Open Dashboard" sends each role. */
+	const dashboardRoute = $derived.by((): '/(app)/admin' | '/(app)/staff' | '/(app)/portal' => {
+		if (user?.role === 'admin') return '/(app)/admin';
+		if (user?.role === 'staff') return '/(app)/staff';
+		return '/(app)/portal';
+	});
 
 	const tabItems = [
 		{ url: '#features', title: 'Features' },
@@ -318,6 +326,17 @@
 					</DropdownMenu.Group>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Group>
+						<DropdownMenu.Item class="nodefault">
+							{#snippet child({ props })}
+								<a href={resolve(dashboardRoute)} {...props}>
+									<LayoutDashboard />
+									Open Dashboard
+								</a>
+							{/snippet}
+						</DropdownMenu.Item>
+					</DropdownMenu.Group>
+					<DropdownMenu.Separator />
+					<DropdownMenu.Group>
 						<DropdownMenu.Item variant="destructive" class="nodefault">
 							{#snippet child({ props })}
 								<a href={resolve('/signout')} {...props}>
@@ -369,7 +388,11 @@
 			that fits — all from one account.
 		</p>
 		<div class="flex items-center justify-center gap-4">
-			<Button class="nodefault" href={resolve('/signup')}>Get started</Button>
+			{#if user}
+				<Button class="nodefault" href={resolve(dashboardRoute)}>Open Dashboard</Button>
+			{:else}
+				<Button class="nodefault" href={resolve('/signup')}>Get started</Button>
+			{/if}
 			<Button class="nodefault" variant="outline" href="#products">Explore products</Button>
 		</div>
 

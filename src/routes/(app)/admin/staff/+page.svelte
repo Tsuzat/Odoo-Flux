@@ -161,7 +161,13 @@
 				</Field.Field>
 				<Field.Field>
 					<Field.FieldLabel for="staff-password">Password</Field.FieldLabel>
-					<Input id="staff-password" type="password" bind:value={form.password} required />
+					<Input
+						id="staff-password"
+						type="password"
+						minlength={6}
+						bind:value={form.password}
+						required
+					/>
 					<Field.FieldDescription>
 						More than 8 characters, with an uppercase letter, a lowercase letter and a special
 						character.
