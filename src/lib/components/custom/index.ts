@@ -7,4 +7,6 @@ export { default as UserAvatar } from './user-avatar.svelte';
 export * from './landing';
 export { default as BarSpinner } from './bar-spinner.svelte';
 export { default as AppSidebar } from './sidebar/app-sidebar.svelte';
+export { default as AppSheetContent } from './app-sheet-content.svelte';
+export { default as DatePicker } from './date-picker.svelte';
 export type { AppSidebarRole } from './sidebar/app-sidebar.svelte';

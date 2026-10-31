@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { getMyPaymentsQuery } from '../data.remote.ts';
+	import { downloadPaymentPdf } from '#lib/pdf.ts';
+	import type { PageProps } from './$types';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -8,9 +10,11 @@
 	import { SidebarTrigger } from '#lib/components/ui/sidebar/index.ts';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 
 	const payments = getMyPaymentsQuery();
+	const { data }: PageProps = $props();
 </script>
 
 <svelte:head>
@@ -59,6 +63,7 @@
 							<Table.Head>Method</Table.Head>
 							<Table.Head>Note</Table.Head>
 							<Table.Head class="text-right">Amount</Table.Head>
+							<Table.Head class="text-right">Receipt</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
@@ -73,6 +78,25 @@
 									>{p.note ?? '—'}</Table.Cell
 								>
 								<Table.Cell class="text-right">{formatCurrency(p.amount)}</Table.Cell>
+								<Table.Cell class="text-right">
+									<Button
+										variant="ghost"
+										size="icon"
+										aria-label="Download payment receipt PDF"
+										onclick={() =>
+											downloadPaymentPdf({
+												paymentId: p.id,
+												invoiceNumber: p.invoice.number,
+												customerName: data.customer.name,
+												amount: p.amount,
+												methodLabel: p.note ?? humanize(p.method),
+												paidOn: p.paidOn,
+												note: p.note
+											})}
+									>
+										<DownloadIcon />
+									</Button>
+								</Table.Cell>
 							</Table.Row>
 						{/each}
 					</Table.Body>

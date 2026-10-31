@@ -10,6 +10,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import * as Select from '#lib/components/ui/select/index.ts';
@@ -22,6 +23,7 @@
 	import { toast } from 'svelte-sonner';
 	import { formatCurrency, formatDate } from '#lib/index.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
+	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -344,7 +346,7 @@
 </div>
 
 <Sheet.Root bind:open={sheetOpen}>
-	<Sheet.Content class="overflow-y-auto sm:max-w-md">
+	<AppSheetContent>
 		<Sheet.Header>
 			<Sheet.Title>{editing ? 'Edit discount' : 'New discount'}</Sheet.Title>
 			<Sheet.Description>
@@ -470,11 +472,16 @@
 				<div class="grid grid-cols-2 gap-4">
 					<Field.Field>
 						<Field.FieldLabel for="discount-start">Start date</Field.FieldLabel>
-						<Input id="discount-start" type="date" bind:value={form.startDate} required />
+						<DatePicker id="discount-start" bind:value={form.startDate} />
 					</Field.Field>
 					<Field.Field>
 						<Field.FieldLabel for="discount-end">End date (optional)</Field.FieldLabel>
-						<Input id="discount-end" type="date" bind:value={form.endDate} />
+						<DatePicker
+							id="discount-end"
+							bind:value={form.endDate}
+							clearable
+							placeholder="No end date"
+						/>
 					</Field.Field>
 				</div>
 
@@ -511,7 +518,7 @@
 				</Sheet.Close>
 			</Sheet.Footer>
 		</form>
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>
 
 <AlertDialog.Root

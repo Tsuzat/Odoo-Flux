@@ -13,6 +13,7 @@ import {
 	transitionMySubscription,
 	updateMyProfile
 } from '#lib/server/portal.ts';
+import { recordPayment } from '#lib/server/admin/operations.ts';
 
 const id = z.string().min(1);
 
@@ -62,6 +63,60 @@ export const getMyPaymentsQuery = query(async () => {
 	const { customer } = await requireCustomer();
 	return listMyPayments(customer.id);
 });
+
+/* ───────── mock payment portal ───────── */
+
+/** Payment rails offered by the mock checkout, mapped to DB methods. */
+const MOCK_METHODS = {
+	upi: { method: 'upi', label: 'UPI' },
+	card: { method: 'card', label: 'Credit Card' },
+	gpay: { method: 'other', label: 'Google Pay' },
+	apple_pay: { method: 'other', label: 'Apple Pay' }
+} as const;
+
+export type MockPaymentMethod = keyof typeof MOCK_METHODS;
+
+/**
+ * Pay the full outstanding balance of one of the customer's invoices
+ * through the mock payment portal. No real gateway is involved — the
+ * payment is recorded exactly like a staff-recorded one, so the
+ * invoice flips to Paid and shows up in payment history.
+ */
+export const payInvoiceCommand = command(
+	z.object({ invoiceId: id, method: z.enum(['upi', 'card', 'gpay', 'apple_pay']) }),
+	async ({ invoiceId, method }) => {
+		const { user, customer } = await requireCustomer();
+		const inv = await getMyInvoice(customer.id, invoiceId);
+		if (!inv) error(404, 'Invoice not found.');
+		if (inv.status === 'paid') error(400, 'This invoice is already paid.');
+		if (inv.status !== 'confirmed') {
+			error(400, 'This invoice is not ready for payment yet.');
+		}
+		const balance = Math.round((Number(inv.total) - Number(inv.amountPaid)) * 100) / 100;
+		if (!(balance > 0)) error(400, 'Nothing is due on this invoice.');
+
+		const rail = MOCK_METHODS[method];
+		try {
+			const payment = await recordPayment(
+				{
+					invoiceId,
+					method: rail.method,
+					amount: balance,
+					paidOn: new Date().toISOString().slice(0, 10),
+					note: `Mock payment via ${rail.label}`
+				},
+				user.id
+			);
+			void getMyInvoicesQuery().refresh();
+			void getMyInvoiceQuery(invoiceId).refresh();
+			void getMyPaymentsQuery().refresh();
+			void getMyOverviewQuery().refresh();
+			return { payment, invoiceNumber: inv.number, amount: balance, methodLabel: rail.label };
+		} catch (e) {
+			error(400, e instanceof Error ? e.message : 'Payment failed. Please try again.');
+		}
+	}
+);
 
 const PORTAL_ACTIONS = ['pause', 'resume', 'renew', 'close'] as const;
 

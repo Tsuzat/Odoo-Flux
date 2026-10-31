@@ -12,6 +12,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import * as Select from '#lib/components/ui/select/index.ts';
@@ -361,7 +362,7 @@
 </div>
 
 <Sheet.Root bind:open={sheetOpen}>
-	<Sheet.Content class="overflow-y-auto sm:max-w-md">
+	<AppSheetContent>
 		<Sheet.Header>
 			<Sheet.Title>{editing ? 'Edit product' : 'New product'}</Sheet.Title>
 			<Sheet.Description>
@@ -484,7 +485,7 @@
 										<PencilIcon />
 									</Button>
 									<Button
-										variant="ghost"
+										variant="destructive"
 										size="icon"
 										aria-label="Delete variant"
 										onclick={() => removeVariant(variant)}
@@ -558,7 +559,7 @@
 				</form>
 			</div>
 		{/if}
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>
 
 <AlertDialog.Root

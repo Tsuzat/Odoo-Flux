@@ -9,6 +9,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import * as Select from '#lib/components/ui/select/index.ts';
@@ -21,6 +22,7 @@
 	import { toast } from 'svelte-sonner';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
+	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PencilIcon from '@lucide/svelte/icons/pencil';
@@ -311,7 +313,7 @@
 </div>
 
 <Sheet.Root bind:open={sheetOpen}>
-	<Sheet.Content class="overflow-y-auto sm:max-w-md">
+	<AppSheetContent>
 		<Sheet.Header>
 			<Sheet.Title>{editing ? 'Edit plan' : 'New plan'}</Sheet.Title>
 			<Sheet.Description>
@@ -384,11 +386,16 @@
 				<div class="grid grid-cols-2 gap-4">
 					<Field.Field>
 						<Field.FieldLabel for="plan-from">Valid from</Field.FieldLabel>
-						<Input id="plan-from" type="date" bind:value={form.validFrom} required />
+						<DatePicker id="plan-from" bind:value={form.validFrom} />
 					</Field.Field>
 					<Field.Field>
 						<Field.FieldLabel for="plan-to">Valid to (optional)</Field.FieldLabel>
-						<Input id="plan-to" type="date" bind:value={form.validTo} />
+						<DatePicker
+							id="plan-to"
+							bind:value={form.validTo}
+							clearable
+							placeholder="No end date"
+						/>
 					</Field.Field>
 				</div>
 
@@ -446,7 +453,7 @@
 				</Sheet.Close>
 			</Sheet.Footer>
 		</form>
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>
 
 <AlertDialog.Root

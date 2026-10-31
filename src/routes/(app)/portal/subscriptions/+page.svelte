@@ -7,6 +7,7 @@
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import { Badge, type BadgeVariant } from '#lib/components/ui/badge/index.ts';
 	import { Button } from '#lib/components/ui/button/index.ts';
 	import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
@@ -145,7 +146,7 @@
 		if (!open) selectedId = null;
 	}}
 >
-	<Sheet.Content class="overflow-y-auto sm:max-w-lg">
+	<AppSheetContent>
 		{#if detail?.error}
 			<Sheet.Header>
 				<Sheet.Title>Subscription</Sheet.Title>
@@ -271,5 +272,5 @@
 				</div>
 			</div>
 		{/if}
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>

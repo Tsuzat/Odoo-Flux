@@ -11,6 +11,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import * as Select from '#lib/components/ui/select/index.ts';
 	import { Badge, type BadgeVariant } from '#lib/components/ui/badge/index.ts';
@@ -21,6 +22,7 @@
 	import { toast } from 'svelte-sonner';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
+	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import EyeIcon from '@lucide/svelte/icons/eye';
@@ -262,7 +264,7 @@
 		if (!open) selectedId = null;
 	}}
 >
-	<Sheet.Content class="overflow-y-auto sm:max-w-lg">
+	<AppSheetContent>
 		{#if detail?.error}
 			<Sheet.Header>
 				<Sheet.Title>Invoice</Sheet.Title>
@@ -427,7 +429,7 @@
 						</div>
 						<Field.Field>
 							<Field.FieldLabel for="inv-pay-date">Paid on</Field.FieldLabel>
-							<Input id="inv-pay-date" type="date" bind:value={payForm.paidOn} required />
+							<DatePicker id="inv-pay-date" bind:value={payForm.paidOn} />
 						</Field.Field>
 						<Button type="submit" size="sm" disabled={paying}>
 							{#if paying}<BarSpinner role="status" aria-label="Recording payment" />{/if}
@@ -466,5 +468,5 @@
 				</div>
 			</div>
 		{/if}
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>

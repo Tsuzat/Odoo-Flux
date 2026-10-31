@@ -1,16 +1,22 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import { getMyInvoiceQuery, getMyInvoicesQuery } from '../data.remote.ts';
+	import { downloadInvoicePdf, type InvoicePdfData } from '#lib/pdf.ts';
 	import * as Card from '#lib/components/ui/card/index.ts';
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import { Badge, type BadgeVariant } from '#lib/components/ui/badge/index.ts';
 	import { Button } from '#lib/components/ui/button/index.ts';
 	import { Skeleton } from '#lib/components/ui/skeleton/index.ts';
 	import { SidebarTrigger } from '#lib/components/ui/sidebar/index.ts';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 
+	import CreditCardIcon from '@lucide/svelte/icons/credit-card';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
+	import type { PageProps } from './$types';
 
 	const invoices = getMyInvoicesQuery();
 
@@ -23,8 +29,48 @@
 
 	const todayStr = new Date().toISOString().slice(0, 10);
 
+	const { data }: PageProps = $props();
+
 	let selectedId = $state<string | null>(null);
 	const detail = $derived(selectedId ? getMyInvoiceQuery(selectedId) : null);
+
+	const isPayable = (inv: { status: string; total: string; amountPaid: string }) =>
+		inv.status === 'confirmed' && Number(inv.total) - Number(inv.amountPaid) > 0;
+
+	type PdfSource = {
+		number: string;
+		subscription: { number: string };
+		periodStart: string;
+		periodEnd: string;
+		issueDate: string;
+		dueDate: string;
+		status: string;
+		lines: InvoicePdfData['lines'];
+		subtotal: string;
+		discountTotal: string;
+		taxTotal: string;
+		total: string;
+		amountPaid: string;
+	};
+
+	function pdfData(inv: PdfSource): InvoicePdfData {
+		return {
+			number: inv.number,
+			customerName: data.customer.name,
+			subscriptionNumber: inv.subscription.number,
+			periodStart: inv.periodStart,
+			periodEnd: inv.periodEnd,
+			issueDate: inv.issueDate,
+			dueDate: inv.dueDate,
+			status: inv.status,
+			lines: inv.lines,
+			subtotal: inv.subtotal,
+			discountTotal: inv.discountTotal,
+			taxTotal: inv.taxTotal,
+			total: inv.total,
+			amountPaid: inv.amountPaid
+		};
+	}
 </script>
 
 <svelte:head>
@@ -75,7 +121,7 @@
 							<Table.Head class="text-right">Total</Table.Head>
 							<Table.Head class="text-right">Paid</Table.Head>
 							<Table.Head>Status</Table.Head>
-							<Table.Head class="text-right">View</Table.Head>
+							<Table.Head class="text-right">Actions</Table.Head>
 						</Table.Row>
 					</Table.Header>
 					<Table.Body>
@@ -100,14 +146,30 @@
 									>
 								</Table.Cell>
 								<Table.Cell class="text-right">
-									<Button
-										variant="ghost"
-										size="icon"
-										aria-label="View invoice"
-										onclick={() => (selectedId = inv.id)}
-									>
-										<EyeIcon />
-									</Button>
+									<div class="flex items-center justify-end gap-1">
+										{#if isPayable(inv)}
+											<Button size="sm" href={resolve('/(app)/portal/pay/[id]', { id: inv.id })}>
+												<CreditCardIcon data-icon="inline-start" />
+												Pay
+											</Button>
+										{/if}
+										<Button
+											variant="ghost"
+											size="icon"
+											aria-label="Download invoice PDF"
+											onclick={() => downloadInvoicePdf(pdfData(inv))}
+										>
+											<DownloadIcon />
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon"
+											aria-label="View invoice"
+											onclick={() => (selectedId = inv.id)}
+										>
+											<EyeIcon />
+										</Button>
+									</div>
 								</Table.Cell>
 							</Table.Row>
 						{/each}
@@ -124,7 +186,7 @@
 		if (!open) selectedId = null;
 	}}
 >
-	<Sheet.Content class="overflow-y-auto sm:max-w-lg">
+	<AppSheetContent>
 		{#if detail?.error}
 			<Sheet.Header>
 				<Sheet.Title>Invoice</Sheet.Title>
@@ -237,7 +299,20 @@
 						{/each}
 					{/if}
 				</div>
+
+				<div class="flex flex-wrap gap-2 border-t pt-4">
+					{#if isPayable(inv)}
+						<Button href={resolve('/(app)/portal/pay/[id]', { id: inv.id })}>
+							<CreditCardIcon data-icon="inline-start" />
+							Pay {formatCurrency(Number(inv.total) - Number(inv.amountPaid))}
+						</Button>
+					{/if}
+					<Button variant="outline" onclick={() => downloadInvoicePdf(pdfData(inv))}>
+						<DownloadIcon data-icon="inline-start" />
+						Download PDF
+					</Button>
+				</div>
 			</div>
 		{/if}
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>

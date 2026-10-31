@@ -106,7 +106,7 @@ export async function transitionMySubscription(
 export function listMyInvoices(customerId: string) {
 	return db.query.invoice.findMany({
 		where: eq(invoice.customerId, customerId),
-		with: { subscription: true },
+		with: { subscription: true, lines: true },
 		orderBy: [desc(invoice.issueDate), desc(invoice.createdAt)]
 	});
 }

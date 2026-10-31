@@ -16,6 +16,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import * as Select from '#lib/components/ui/select/index.ts';
 	import { Badge, type BadgeVariant } from '#lib/components/ui/badge/index.ts';
@@ -26,6 +27,7 @@
 	import { toast } from 'svelte-sonner';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
+	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import EyeIcon from '@lucide/svelte/icons/eye';
@@ -316,7 +318,7 @@
 
 <!-- Create sheet -->
 <Sheet.Root bind:open={createOpen}>
-	<Sheet.Content class="overflow-y-auto sm:max-w-lg">
+	<AppSheetContent>
 		<Sheet.Header>
 			<Sheet.Title>New subscription</Sheet.Title>
 			<Sheet.Description>
@@ -386,7 +388,7 @@
 				<div class="grid grid-cols-2 gap-4">
 					<Field.Field>
 						<Field.FieldLabel for="sub-start">Start date</Field.FieldLabel>
-						<Input id="sub-start" type="date" bind:value={form.startDate} required />
+						<DatePicker id="sub-start" bind:value={form.startDate} />
 					</Field.Field>
 					<Field.Field>
 						<Field.FieldLabel for="sub-terms">Payment terms (days)</Field.FieldLabel>
@@ -502,7 +504,7 @@
 							{#if lines.length > 1}
 								<Button
 									type="button"
-									variant="ghost"
+									variant="destructive"
 									size="icon"
 									aria-label="Remove line"
 									onclick={() => lines.splice(i, 1)}
@@ -530,7 +532,7 @@
 				</Sheet.Close>
 			</Sheet.Footer>
 		</form>
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>
 
 <!-- Detail sheet -->
@@ -540,7 +542,7 @@
 		if (!open) selectedId = null;
 	}}
 >
-	<Sheet.Content class="overflow-y-auto sm:max-w-lg">
+	<AppSheetContent>
 		{#if detail?.error}
 			<Sheet.Header>
 				<Sheet.Title>Subscription</Sheet.Title>
@@ -733,5 +735,5 @@
 				</div>
 			</div>
 		{/if}
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>

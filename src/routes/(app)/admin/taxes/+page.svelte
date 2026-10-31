@@ -9,6 +9,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -200,7 +201,7 @@
 </div>
 
 <Sheet.Root bind:open={sheetOpen}>
-	<Sheet.Content class="overflow-y-auto sm:max-w-md">
+	<AppSheetContent>
 		<Sheet.Header>
 			<Sheet.Title>{editing ? 'Edit tax' : 'New tax'}</Sheet.Title>
 			<Sheet.Description
@@ -248,7 +249,7 @@
 				</Sheet.Close>
 			</Sheet.Footer>
 		</form>
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>
 
 <AlertDialog.Root

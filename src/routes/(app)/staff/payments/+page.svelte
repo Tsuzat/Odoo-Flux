@@ -9,6 +9,7 @@
 	import * as Table from '#lib/components/ui/table/index.ts';
 	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
 	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import AppSheetContent from '#lib/components/custom/app-sheet-content.svelte';
 	import * as AlertDialog from '#lib/components/ui/alert-dialog/index.ts';
 	import * as Field from '#lib/components/ui/field/index.ts';
 	import * as Select from '#lib/components/ui/select/index.ts';
@@ -21,6 +22,7 @@
 	import { toast } from 'svelte-sonner';
 	import { formatCurrency, formatDate, humanize } from '#lib/index.ts';
 	import { BarSpinner } from '#lib/components/custom/index.ts';
+	import DatePicker from '#lib/components/custom/date-picker.svelte';
 
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -217,7 +219,7 @@
 </div>
 
 <Sheet.Root bind:open={sheetOpen}>
-	<Sheet.Content class="overflow-y-auto sm:max-w-md">
+	<AppSheetContent>
 		<Sheet.Header>
 			<Sheet.Title>Record payment</Sheet.Title>
 			<Sheet.Description>
@@ -290,7 +292,7 @@
 				</div>
 				<Field.Field>
 					<Field.FieldLabel for="pay-date">Paid on</Field.FieldLabel>
-					<Input id="pay-date" type="date" bind:value={form.paidOn} required />
+					<DatePicker id="pay-date" bind:value={form.paidOn} />
 				</Field.Field>
 				<Field.Field>
 					<Field.FieldLabel for="pay-note">Note (optional)</Field.FieldLabel>
@@ -309,7 +311,7 @@
 				</Sheet.Close>
 			</Sheet.Footer>
 		</form>
-	</Sheet.Content>
+	</AppSheetContent>
 </Sheet.Root>
 
 <AlertDialog.Root
