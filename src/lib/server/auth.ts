@@ -128,6 +128,7 @@ export const auth = betterAuth({
 	},
 	emailVerification: {
 		sendOnSignUp: true,
+		autoSignInAfterVerification: true,
 		// Keep in sync with the "expires in 1 hour" copy in the email templates.
 		expiresIn: 60 * 60,
 		sendVerificationEmail: async ({ user, url }) => {

@@ -86,7 +86,7 @@
 	<title>Profile — Brightloop</title>
 </svelte:head>
 
-<div class="flex max-w-2xl flex-col gap-6">
+<div class="flex flex-col gap-6">
 	<div class="flex flex-col gap-1">
 		<h1 class="text-2xl font-semibold tracking-tight">
 			<SidebarTrigger class="mr-4" />
@@ -112,116 +112,118 @@
 		<Skeleton class="h-96" aria-label="Loading profile" />
 	{:else}
 		{@const p = profile.current}
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Account</Card.Title>
-				<Card.Description>
-					Signed in as {p.user.email} · Member since {formatDate(p.customer.createdAt)}
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<form
-					class="flex flex-col gap-5"
-					onsubmit={(e) => {
-						e.preventDefault();
-						saveProfile();
-					}}
-				>
-					<Field.FieldGroup>
-						<Field.Field>
-							<Field.FieldLabel for="profile-name">Name</Field.FieldLabel>
-							<Input id="profile-name" bind:value={form.name} required />
-						</Field.Field>
-						<Field.Field>
-							<Field.FieldLabel for="profile-email">Email</Field.FieldLabel>
-							<Input id="profile-email" value={p.user.email} disabled />
-							<Field.FieldDescription
-								>Contact Brightloop support to change your email.</Field.FieldDescription
-							>
-						</Field.Field>
-						<Field.Field>
-							<Field.FieldLabel for="profile-company">Company (optional)</Field.FieldLabel>
-							<Input id="profile-company" bind:value={form.company} />
-						</Field.Field>
-						<Field.Field>
-							<Field.FieldLabel for="profile-phone">Phone (optional)</Field.FieldLabel>
-							<Input id="profile-phone" bind:value={form.phone} />
-						</Field.Field>
-						<Field.Field>
-							<Field.FieldLabel for="profile-address">Address (optional)</Field.FieldLabel>
-							<Textarea id="profile-address" bind:value={form.address} />
-						</Field.Field>
-					</Field.FieldGroup>
-					<div>
-						<Button type="submit" disabled={savingProfile}>
-							{#if savingProfile}<BarSpinner role="status" aria-label="Saving" />{/if}
-							Save profile
-						</Button>
-					</div>
-				</form>
-			</Card.Content>
-		</Card.Root>
+		<div class="grid items-start gap-6 xl:grid-cols-2">
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Account</Card.Title>
+					<Card.Description>
+						Signed in as {p.user.email} · Member since {formatDate(p.customer.createdAt)}
+					</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<form
+						class="flex flex-col gap-5"
+						onsubmit={(e) => {
+							e.preventDefault();
+							saveProfile();
+						}}
+					>
+						<Field.FieldGroup>
+							<Field.Field>
+								<Field.FieldLabel for="profile-name">Name</Field.FieldLabel>
+								<Input id="profile-name" bind:value={form.name} required />
+							</Field.Field>
+							<Field.Field>
+								<Field.FieldLabel for="profile-email">Email</Field.FieldLabel>
+								<Input id="profile-email" value={p.user.email} disabled />
+								<Field.FieldDescription
+									>Contact Brightloop support to change your email.</Field.FieldDescription
+								>
+							</Field.Field>
+							<Field.Field>
+								<Field.FieldLabel for="profile-company">Company (optional)</Field.FieldLabel>
+								<Input id="profile-company" bind:value={form.company} />
+							</Field.Field>
+							<Field.Field>
+								<Field.FieldLabel for="profile-phone">Phone (optional)</Field.FieldLabel>
+								<Input id="profile-phone" bind:value={form.phone} />
+							</Field.Field>
+							<Field.Field>
+								<Field.FieldLabel for="profile-address">Address (optional)</Field.FieldLabel>
+								<Textarea id="profile-address" bind:value={form.address} />
+							</Field.Field>
+						</Field.FieldGroup>
+						<div>
+							<Button type="submit" disabled={savingProfile}>
+								{#if savingProfile}<BarSpinner role="status" aria-label="Saving" />{/if}
+								Save profile
+							</Button>
+						</div>
+					</form>
+				</Card.Content>
+			</Card.Root>
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Change password</Card.Title>
-				<Card.Description>
-					More than 8 characters, with an uppercase letter, a lowercase letter and a special
-					character. Changing it signs out your other sessions.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<form
-					class="flex flex-col gap-5"
-					onsubmit={(e) => {
-						e.preventDefault();
-						changePassword();
-					}}
-				>
-					<Field.FieldGroup>
-						<Field.Field>
-							<Field.FieldLabel for="pw-current">Current password</Field.FieldLabel>
-							<Input
-								id="pw-current"
-								type="password"
-								autocomplete="current-password"
-								bind:value={passwordForm.currentPassword}
-								required
-							/>
-						</Field.Field>
-						<Field.Field>
-							<Field.FieldLabel for="pw-new">New password</Field.FieldLabel>
-							<Input
-								id="pw-new"
-								type="password"
-								autocomplete="new-password"
-								bind:value={passwordForm.newPassword}
-								required
-							/>
-						</Field.Field>
-						<Field.Field>
-							<Field.FieldLabel for="pw-confirm">Confirm new password</Field.FieldLabel>
-							<Input
-								id="pw-confirm"
-								type="password"
-								autocomplete="new-password"
-								bind:value={passwordForm.confirmPassword}
-								required
-							/>
-						</Field.Field>
-					</Field.FieldGroup>
-					<div>
-						<Button type="submit" disabled={savingPassword}>
-							{#if savingPassword}<BarSpinner role="status" aria-label="Changing password" />{/if}
-							Change password
-						</Button>
-					</div>
-				</form>
-			</Card.Content>
-		</Card.Root>
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Change password</Card.Title>
+					<Card.Description>
+						More than 8 characters, with an uppercase letter, a lowercase letter and a special
+						character. Changing it signs out your other sessions.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content>
+					<form
+						class="flex flex-col gap-5"
+						onsubmit={(e) => {
+							e.preventDefault();
+							changePassword();
+						}}
+					>
+						<Field.FieldGroup>
+							<Field.Field>
+								<Field.FieldLabel for="pw-current">Current password</Field.FieldLabel>
+								<Input
+									id="pw-current"
+									type="password"
+									autocomplete="current-password"
+									bind:value={passwordForm.currentPassword}
+									required
+								/>
+							</Field.Field>
+							<Field.Field>
+								<Field.FieldLabel for="pw-new">New password</Field.FieldLabel>
+								<Input
+									id="pw-new"
+									type="password"
+									autocomplete="new-password"
+									bind:value={passwordForm.newPassword}
+									required
+								/>
+							</Field.Field>
+							<Field.Field>
+								<Field.FieldLabel for="pw-confirm">Confirm new password</Field.FieldLabel>
+								<Input
+									id="pw-confirm"
+									type="password"
+									autocomplete="new-password"
+									bind:value={passwordForm.confirmPassword}
+									required
+								/>
+							</Field.Field>
+						</Field.FieldGroup>
+						<div>
+							<Button type="submit" disabled={savingPassword}>
+								{#if savingPassword}<BarSpinner role="status" aria-label="Changing password" />{/if}
+								Change password
+							</Button>
+						</div>
+					</form>
+				</Card.Content>
+			</Card.Root>
 
-		<p class="flex items-center gap-2 text-sm text-muted-foreground">
-			Account type <Badge variant="secondary">Customer</Badge>
-		</p>
+			<p class="flex items-center gap-2 text-sm text-muted-foreground xl:col-span-2">
+				Account type <Badge variant="secondary">Customer</Badge>
+			</p>
+		</div>
 	{/if}
 </div>
