@@ -9,7 +9,7 @@ import { createAccessControl } from 'better-auth/plugins/access';
 import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
 import { db } from '#lib/server/db/index.ts';
 import { redis } from 'bun';
-import { sendEmail, type EmailTemplate } from './email/index.ts';
+import { getAppIconUrl, sendEmail, type EmailTemplate } from './email/index.ts';
 import {
 	getPasswordResetTemplate,
 	getExistingUserSignupTemplate,
@@ -17,14 +17,15 @@ import {
 } from './email/templates';
 import { customer } from './db/schema.ts';
 
+/** App icon served from `static/`, used in email headers. */
+const appIconUrl = getAppIconUrl();
+
 /**
  * Fire-and-forget delivery for auth emails. Not awaiting keeps the
  * response time independent of the mail provider (which would
  * otherwise leak whether an account exists); errors are logged
  * instead of failing the auth request.
  */
-/** App icon served from `static/` in production, used in email headers. */
-const appIconUrl = new URL('/favicon.svg', ORIGIN).toString();
 
 function sendAuthEmail(to: string, subject: string, template: EmailTemplate): void {
 	void sendEmail(to, subject, template).catch((error: unknown) => {

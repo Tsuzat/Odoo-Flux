@@ -1,5 +1,5 @@
 import { SendMailClient } from 'zeptomail';
-import { ZEPTO_MAIL_URL, ZEPTO_MAIL_API_KEY } from '$app/env/private';
+import { ORIGIN, ZEPTO_MAIL_URL, ZEPTO_MAIL_API_KEY } from '$app/env/private';
 import type { EmailTemplate } from './templates/base.ts';
 
 export type { EmailTemplate } from './templates/base.ts';
@@ -21,6 +21,11 @@ export type {
 
 const FROM_ADDRESS = 'brightloop@tsuzat.com';
 const FROM_NAME = 'Brightloop Software';
+
+/** App icon URL for email headers: `ORIGIN` + `/favicon.svg` (served from `static/`). */
+export function getAppIconUrl(): string {
+	return `${ORIGIN.replace(/\/+$/, '')}/favicon.svg`;
+}
 
 let client: SendMailClient | undefined;
 

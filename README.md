@@ -59,38 +59,59 @@ You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
-## Scheduled billing & reminders (Railway cron)
+## Scheduled billing & reminders (Railway Function)
 
 Billing runs and overdue-payment reminders are exposed as a protected
 endpoint: `POST /api/cron/billing` (header `x-cron-secret: <CRON_SECRET>`).
 It generates due invoices, auto-closes expired plans, and emails overdue
 reminders (weekly cadence). It is idempotent, so retries are safe.
 
-To run it daily on Railway:
+Run it daily with a **Railway Function** (Bun):
 
 1. Set `CRON_SECRET` (any long random string) on the **app service**.
-2. Create a **cron service** from this repo:
-   - **Cron schedule (UTC):** `30 3 * * *` (daily, 09:00 IST)
-   - **Start command:**
-     ```sh
-     bun -e "const r = await fetch(process.env.APP_URL + '/api/cron/billing', { method: 'POST', headers: { 'x-cron-secret': process.env.CRON_SECRET } }); console.log(r.status, await r.text()); if (!r.ok) process.exit(1);"
-     ```
-   - **Env on the cron service:** `APP_URL` (public app URL) and the same
-     `CRON_SECRET`.
+2. Create a **Function** in the same Railway project and paste the code
+   below.
+3. On the Function, set env vars `APP_URL` (public app URL) and
+   `CRON_SECRET` (same value as the app).
+4. Set the Function's **Cron Schedule** to `30 3 * * *` (03:30 UTC =
+   09:00 IST, daily).
+
+```ts
+/**
+ * Brightloop billing cron — Railway Function (Bun).
+ * Invoked on the function's cron schedule; also runs on POST.
+ */
+const APP_URL = process.env.APP_URL; // e.g. https://your-app.up.railway.app
+const CRON_SECRET = process.env.CRON_SECRET;
+
+async function runBilling(): Promise<string> {
+	if (!APP_URL || !CRON_SECRET) {
+		throw new Error('APP_URL and CRON_SECRET env vars are required');
+	}
+	const res = await fetch(`${APP_URL.replace(/\/+$/, '')}/api/cron/billing`, {
+		method: 'POST',
+		headers: { 'x-cron-secret': CRON_SECRET }
+	});
+	const body = await res.text();
+	if (!res.ok) {
+		throw new Error(`Billing endpoint failed: HTTP ${res.status} — ${body}`);
+	}
+	console.log('[billing-cron]', res.status, body);
+	return body;
+}
+
+export default async function handler(req?: Request): Promise<Response> {
+	// Health checks (GET) must not trigger a billing run.
+	if (req && req.method === 'GET') {
+		return new Response('Brightloop billing cron function');
+	}
+	const body = await runBilling();
+	return new Response(body, {
+		status: 200,
+		headers: { 'content-type': 'application/json' }
+	});
+}
+```
 
 The same jobs can be triggered manually from **Admin → Run Billing**
 (billing run and "Send overdue reminders" buttons).
-
-### Alternative: Cloudflare Workers Cron Triggers
-
-A ready-made worker lives in `cron/billing/` (schedule in its
-`wrangler.toml`, daily 03:30 UTC). It calls the same endpoint with the
-same secret. From that folder:
-
-```sh
-bunx wrangler secret put CRON_SECRET   # same value as the app
-bunx wrangler deploy
-```
-
-Set `APP_URL` in `cron/billing/wrangler.toml` to the app URL first.
-Trigger a run anytime with `curl -X POST https://<worker>/run -H "x-cron-secret: <secret>"`.

@@ -36,6 +36,43 @@ export interface InvoicePdfData {
 
 const PAGE = { left: 14, right: 196, top: 16 };
 
+let iconPromise: Promise<string | null> | undefined;
+
+/**
+ * Load the app icon (`origin + /favicon.svg`) and rasterize it to a
+ * PNG data URL for jsPDF (which can't embed SVG). Cached per page.
+ * Falls back to `null` (drawn brand mark) if loading fails.
+ */
+function loadAppIcon(): Promise<string | null> {
+	iconPromise ??= (async () => {
+		try {
+			const res = await fetch(`${window.location.origin}/favicon.svg`);
+			if (!res.ok) return null;
+			const objectUrl = URL.createObjectURL(await res.blob());
+			try {
+				const img = new Image();
+				await new Promise<void>((resolvePromise, reject) => {
+					img.onload = () => resolvePromise();
+					img.onerror = () => reject(new Error('icon load failed'));
+					img.src = objectUrl;
+				});
+				const canvas = document.createElement('canvas');
+				canvas.width = 235;
+				canvas.height = 235;
+				const ctx = canvas.getContext('2d');
+				if (!ctx) return null;
+				ctx.drawImage(img, 0, 0, 235, 235);
+				return canvas.toDataURL('image/png');
+			} finally {
+				URL.revokeObjectURL(objectUrl);
+			}
+		} catch {
+			return null;
+		}
+	})();
+	return iconPromise;
+}
+
 /** jsPDF's built-in Helvetica has no ₹ glyph — use Rs. in PDFs. */
 function pdfMoney(value: number | string): string {
 	return formatCurrency(value).replace('₹', 'Rs. ');
@@ -46,13 +83,17 @@ function pageBackground(doc: jsPDF) {
 	doc.rect(0, 0, 210, 297, 'F');
 }
 
-function header(doc: jsPDF, title: string, subtitle: string) {
-	doc.setFillColor(43, 127, 255);
-	doc.roundedRect(PAGE.left, PAGE.top - 6, 12, 12, 2, 2, 'F');
-	doc.setTextColor(255, 255, 255);
-	doc.setFont('helvetica', 'bold');
-	doc.setFontSize(11);
-	doc.text('B', PAGE.left + 6, PAGE.top + 2.5, { align: 'center' });
+function header(doc: jsPDF, title: string, subtitle: string, icon: string | null) {
+	if (icon) {
+		doc.addImage(icon, 'PNG', PAGE.left, PAGE.top - 6, 12, 12);
+	} else {
+		doc.setFillColor(43, 127, 255);
+		doc.roundedRect(PAGE.left, PAGE.top - 6, 12, 12, 2, 2, 'F');
+		doc.setTextColor(255, 255, 255);
+		doc.setFont('helvetica', 'bold');
+		doc.setFontSize(11);
+		doc.text('B', PAGE.left + 6, PAGE.top + 2.5, { align: 'center' });
+	}
 
 	doc.setTextColor(20, 20, 20);
 	doc.setFontSize(16);
@@ -89,10 +130,10 @@ function row(doc: jsPDF, y: number, label: string, value: string, bold = false) 
 	doc.text(value, PAGE.right, y, { align: 'right' });
 }
 
-export function downloadInvoicePdf(inv: InvoicePdfData) {
+export async function downloadInvoicePdf(inv: InvoicePdfData) {
 	const doc = new jsPDF();
 	pageBackground(doc);
-	header(doc, `Invoice ${inv.number}`, `Status: ${humanize(inv.status)}`);
+	header(doc, `Invoice ${inv.number}`, `Status: ${humanize(inv.status)}`, await loadAppIcon());
 
 	let y = 34;
 	doc.setFontSize(10);
@@ -177,10 +218,10 @@ export interface PaymentPdfData {
 	note?: string | null;
 }
 
-export function downloadPaymentPdf(pay: PaymentPdfData) {
+export async function downloadPaymentPdf(pay: PaymentPdfData) {
 	const doc = new jsPDF();
 	pageBackground(doc);
-	header(doc, 'Payment receipt', `Invoice ${pay.invoiceNumber}`);
+	header(doc, 'Payment receipt', `Invoice ${pay.invoiceNumber}`, await loadAppIcon());
 
 	let y = 36;
 	doc.setFontSize(11);

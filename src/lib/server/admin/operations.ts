@@ -16,7 +16,7 @@ import {
 	type PaymentMethod,
 	type SubscriptionStatus
 } from '#lib/server/db/schema.ts';
-import { sendEmail } from '../email/index.ts';
+import { getAppIconUrl, sendEmail } from '../email/index.ts';
 import { baseEmailTemplate, APP_NAME } from '../email/templates/base.ts';
 import { getInvoiceGeneratedTemplate } from '../email/templates/invoice-generated.ts';
 import { getInvoiceOverdueTemplate } from '../email/templates/invoice-overdue.ts';
@@ -470,7 +470,7 @@ export async function notifyInvoiceGenerated(invoiceId: string): Promise<void> {
 			getInvoiceGeneratedTemplate({
 				url: new URL('/signin?next=/portal/invoices', ORIGIN).toString(),
 				name: detail.customer.name,
-				iconUrl: new URL('/favicon.svg', ORIGIN).toString(),
+				iconUrl: getAppIconUrl(),
 				invoiceNumber: detail.number,
 				subscriptionNumber: detail.subscription.number,
 				period: `${fmtDate(detail.periodStart)} – ${fmtDate(detail.periodEnd)}`,
@@ -531,7 +531,7 @@ export async function sendOverdueReminders(
 				getInvoiceOverdueTemplate({
 					url: new URL(`/signin?next=/portal/pay/${inv.id}`, ORIGIN).toString(),
 					name: inv.customer.name,
-					iconUrl: new URL('/favicon.svg', ORIGIN).toString(),
+					iconUrl: getAppIconUrl(),
 					invoiceNumber: inv.number,
 					balance: inrFmt.format(balance),
 					dueDate: fmtDate(inv.dueDate),
@@ -573,7 +573,7 @@ export async function sendInvoice(id: string) {
 				preheader: `Invoice ${detail.number} for ${detail.customer.name}: total ₹${detail.total}, due ${detail.dueDate}.`,
 				title: `Invoice ${detail.number} — ${APP_NAME}`,
 				eyebrow: 'Invoice',
-				iconUrl: new URL('/favicon.svg', ORIGIN).toString(),
+				iconUrl: getAppIconUrl(),
 				heading: `Invoice ${detail.number}`,
 				name: detail.customer.name,
 				paragraphs: [
