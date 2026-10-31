@@ -5,6 +5,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
 import { admin } from 'better-auth/plugins';
+import { createAccessControl } from 'better-auth/plugins/access';
+import { adminAc, defaultStatements } from 'better-auth/plugins/admin/access';
 import { db } from '#lib/server/db/index.ts';
 import { redis } from 'bun';
 import { sendEmail, type EmailTemplate } from './email/index.ts';
@@ -29,6 +31,16 @@ function sendAuthEmail(to: string, subject: string, template: EmailTemplate): vo
 		console.error(`Failed to send "${subject}" email to ${to}`, error);
 	});
 }
+
+/**
+ * Access control for the admin plugin, registering the app roles
+ * (admin / staff / customer) so `setRole`/`createUser` accept them.
+ * Only admins receive user-management permissions.
+ */
+const ac = createAccessControl({ ...defaultStatements });
+const adminRole = ac.newRole({ ...adminAc.statements });
+const staffRole = ac.newRole({ user: [], session: [] });
+const customerRole = ac.newRole({ user: [], session: [] });
 
 export const auth = betterAuth({
 	appName: 'Brightloop Software',
@@ -137,7 +149,12 @@ export const auth = betterAuth({
 		}
 	},
 	plugins: [
-		admin({ defaultRole: 'customer', adminRoles: ['admin'] }),
+		admin({
+			ac,
+			roles: { admin: adminRole, staff: staffRole, customer: customerRole },
+			defaultRole: 'customer',
+			adminRoles: ['admin']
+		}),
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
 	]
 });
