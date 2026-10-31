@@ -1,63 +1,125 @@
-# sv
+# Brightloop Software — Subscription Management System
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+One system to run plans, subscriptions and recurring billing in one place:
+products and plans → quotations → subscriptions → invoices → payments →
+revenue. Built for the Odoo hackathon problem statement _"Subscription
+Management System"_.
 
-## Creating a project
+Brightloop sells everything on subscription — business software billed
+monthly or yearly, add-ons customers switch on and off, and products that
+come in different variants — for customers from small shops to large
+companies on yearly contracts.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Demo credentials
+
+Use these seeded accounts to explore the app. Each role lands on its own
+dashboard after sign-in:
+
+| Role     | Email                | Password      | Lands on  |
+| -------- | -------------------- | ------------- | --------- |
+| Admin    | `admin@example.com`  | `admin@123`   | `/admin`  |
+| Staff    | `staff@example.com`  | `staff@123`   | `/staff`  |
+| Customer | Sign up at `/signup` | (your choice) | `/portal` |
+
+> ⚠️ These are **demo credentials for evaluation only**. Change the
+> passwords (or delete these users) before any real production use.
+
+A good 10-minute tour: **Admin** create a product with a variant
+(e.g. Brand: Odoo +₹560) and a plan → build a quotation template → create
+a subscription from it and walk Draft → Quotation → Confirmed → Active →
+**Run Billing** → confirm the invoice → **Staff** record a payment →
+**Customer** toggle an add-on, pay the invoice in the mock payment
+portal, and download the invoice/receipt PDFs.
+
+## What it does
+
+**Admin** (controls the whole system)
+
+- Dashboard: active subscriptions, MRR, revenue collected, outstanding
+  and overdue invoices, renewals — SQL aggregates behind a 60s Redis cache
+- Catalog: products & variants (per-variant extra pricing), plans
+  (price, daily/weekly/monthly/yearly billing, min quantity, validity
+  window, auto-close / closable / pausable / renewable per plan), taxes,
+  discounts (fixed or %, min purchase/quantity, date window, usage limit)
+- Operations: subscriptions with the full lifecycle, quotation templates,
+  invoices (confirm / cancel / send / PDF), payments, customers
+- Staff management via Better Auth's admin plugin: create staff, change
+  roles, ban with a reason, delete users (never yourself or the last admin)
+- Run Billing: generates every due invoice in one click, auto-closes
+  expired plans, never bills twice (unique subscription+period index)
+
+**Staff** (day-to-day, limited access)
+
+- Dashboard, subscriptions (create from templates, run the lifecycle,
+  edit lines/add-ons), quotation templates (read-only), invoices
+  (confirm / send / cancel, record payments), payments, customers
+  (read-only)
+
+**Customer portal** (self-service, own data only)
+
+- Overview of subscriptions, outstanding balances and next billing date
+- Pause / resume / renew / close subscriptions within the plan's rules
+- Switch add-ons on and off — they land on the next invoice
+- Pay invoices in a mock payment portal (UPI, card, Google Pay,
+  Apple Pay on Mac), download invoice & payment-receipt PDFs,
+  profile and password management
+
+**Platform behaviour**
+
+- Taxes and discounts are applied automatically at invoice generation
+  (tax on the discounted net); discounts stop when expired or used up
+- Customers are emailed when an invoice is generated, and get weekly
+  overdue reminders with a pay-now link
+- Every write is validated (Zod) and role-checked server-side; invoices
+  are snapshots, so later catalog edits never rewrite issued bills
+
+## Tech stack
+
+- **SvelteKit 3 + Svelte 5** (runes, remote functions), TypeScript
+- **shadcn-svelte** UI (Tailwind CSS v4), Lucide icons
+- **Better Auth** (email/password + admin plugin) with Redis/Valkey
+  secondary storage for sessions
+- **Drizzle ORM** on PostgreSQL, **Bun** runtime end to end
+- **ZeptoMail** for transactional email, **jsPDF** for client-side PDFs
+
+## Getting started
 
 ```sh
-# create a new project
-npx sv create my-app
+bun install
+cp .env.example .env   # if present; otherwise create .env (see below)
+bun run db:push        # apply the schema to your database
+bun run dev            # http://localhost:5173
 ```
 
-To recreate this project with the same configuration:
+> This app uses Bun-only APIs (`bun:sql`, Bun's Redis client), so Vite
+> must run on the Bun runtime. The `dev`/`build` scripts already pass
+> `--bun`; running `vite dev` directly under Node fails.
 
-```sh
-# recreate this project
-bun x sv@1.1.1 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" tailwindcss="plugins:none" enhanced-img sveltekit-adapter="adapter:auto" drizzle="database:postgresql+postgresql:postgres.js+docker:no" better-auth="demo:password,github" ai-tools="ide:opencode" experimental="features:async,remoteFunctions" --install bun Brightloop-Software
+### Environment variables
+
+| Variable             | Purpose                                                             |
+| -------------------- | ------------------------------------------------------------------- |
+| `DATABASE_URL`       | PostgreSQL connection string                                        |
+| `REDIS_URL`          | Redis/Valkey URL (Better Auth sessions, rate limits, caching)       |
+| `ORIGIN`             | Public app origin, e.g. `https://app.example.com`                   |
+| `BETTER_AUTH_SECRET` | Auth secret (32+ random characters)                                 |
+| `ZEPTO_MAIL_URL`     | ZeptoMail API URL                                                   |
+| `ZEPTO_MAIL_API_KEY` | ZeptoMail API key (sender `brightloop@tsuzat.com` must be verified) |
+| `CRON_SECRET`        | Shared secret for `POST /api/cron/billing` (see below)              |
+
+## Project layout
+
 ```
-
-## Adding features
-
-Add features to your project with `sv add`:
-
-```sh
-npx sv add
+src/routes/(app)/admin    Admin console (dashboard, catalog, operations, billing)
+src/routes/(app)/staff    Staff workspace
+src/routes/(app)/portal   Customer portal (+ mock payment pages)
+src/routes/api/cron       Scheduled-jobs endpoint
+src/lib/server/admin      Dashboard, catalog, operations, billing engine, users
+src/lib/server            Auth, DB (Drizzle schema + relations), email, portal/staff data
+src/lib/components/ui     shadcn-svelte components
+src/lib/components/custom Sidebar, expandable sheets, calendar date-picker
+src/lib/pdf.ts            Client-side invoice & receipt PDF generation
 ```
-
-For example, to add Tailwind CSS:
-
-```sh
-npx sv add tailwindcss
-```
-
-## Developing
-
-This app uses Bun-only APIs (`bun:sql`, Bun's Redis client), so Vite must run on the
-Bun runtime. The `dev`/`build` scripts already pass `--bun`; running `vite dev`
-directly under Node fails with `Cannot find package 'bun'`.
-
-Once you've created a project and installed dependencies with `bun install`, start a development server:
-
-```sh
-bun run dev
-
-# or start the server and open the app in a new browser tab
-bun run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-bun run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
 ## Scheduled billing & reminders (Railway Function)
 
@@ -115,3 +177,26 @@ export default async function handler(req?: Request): Promise<Response> {
 
 The same jobs can be triggered manually from **Admin → Run Billing**
 (billing run and "Send overdue reminders" buttons).
+
+## Scripts
+
+| Command               | What it does                            |
+| --------------------- | --------------------------------------- |
+| `bun run dev`         | Dev server on the Bun runtime           |
+| `bun run build`       | Production build (adapter-bun)          |
+| `bun run check`       | `svelte-kit sync` + `svelte-check`      |
+| `bun run lint`        | Prettier check + ESLint                 |
+| `bun run format`      | Prettier write                          |
+| `bun run db:push`     | Push the Drizzle schema to the database |
+| `bun run db:generate` | Generate a migration                    |
+| `bun run db:migrate`  | Apply migrations                        |
+| `bun run db:studio`   | Drizzle Studio                          |
+| `bun run test`        | Vitest (unit)                           |
+
+## Deployment notes
+
+- Hosted on **Railway** (app service on the Bun runtime).
+- Sessions live in Redis/Valkey — the hosted Redis connection must be
+  stable, or sign-in will fail.
+- Transactional email needs the ZeptoMail sender domain/address
+  verified, otherwise sends are rejected with `TM_4001`.
